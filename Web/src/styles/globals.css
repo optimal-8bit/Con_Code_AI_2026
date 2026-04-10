@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Base colors (dark glass theme) */
+  --background: 222 47% 8%;
+  --foreground: 210 40% 98%;
+
+  /* Primary accent (AI violet-blue) */
+  --primary: 262 83% 65%;
+  --primary-foreground: 210 40% 98%;
+
+  /* Glass surfaces (IMPORTANT) */
+  --card: 222 47% 14% / 0.4;
+  --card-foreground: 210 40% 98%;
+
+  /* Subtle UI tones */
+  --muted: 215 20% 65%;
+  --accent: 190 90% 60%;
+
+  /* Borders for glass effect */
+  --border: 210 40% 98% / 0.1;
+  --input: 210 40% 98% / 0.08;
+
+  --radius: 16px;
+}
+
+---
+/* 🌟 GLASSMORPHISM UTILITIES */
+
+.glass {
+  background: hsla(var(--card));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsla(var(--border));
+  border-radius: var(--radius);
+}
+
+.glass-strong {
+  background: hsla(var(--card));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsla(var(--border));
+  border-radius: var(--radius);
+}
+
+---
+/* 🌌 OPTIONAL: GRADIENT BACKGROUND */
+
+body {
+  background: radial-gradient(circle at top left,
+      hsl(262 83% 20%),
+      hsl(222 47% 8%));
+  color: hsl(var(--foreground));
+}
