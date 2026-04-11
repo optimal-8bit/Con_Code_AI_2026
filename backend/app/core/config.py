@@ -44,6 +44,11 @@ class Settings:
     stripe_publishable_key: str | None = os.getenv("STRIPE_PUBLISHABLE_KEY")
     stripe_webhook_secret: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")
 
+    # Cloudinary
+    cloudinary_cloud_name: str | None = os.getenv("CLOUDINARY_CLOUD_NAME")
+    cloudinary_api_key: str | None = os.getenv("CLOUDINARY_API_KEY")
+    cloudinary_api_secret: str | None = os.getenv("CLOUDINARY_API_SECRET")
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
@@ -51,6 +56,10 @@ class Settings:
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024
+
+    @property
+    def cloudinary_enabled(self) -> bool:
+        return bool(self.cloudinary_cloud_name and self.cloudinary_api_key and self.cloudinary_api_secret)
 
 
 settings = Settings()

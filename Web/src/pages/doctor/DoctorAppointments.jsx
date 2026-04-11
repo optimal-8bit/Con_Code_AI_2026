@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { doctorService } from '@/services/doctor.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
 import { Calendar, Check, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function DoctorAppointments() {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,6 +66,10 @@ export default function DoctorAppointments() {
                         </span>
                       </div>
                       <p className="text-gray-700">
+                        <span className="font-medium">Patient:</span>{' '}
+                        {appt.patient_name || appt.patient_email || appt.patient_id}
+                      </p>
+                      <p className="text-gray-700">
                         <span className="font-medium">Reason:</span> {appt.reason || 'General Consultation'}
                       </p>
                       {appt.notes && (
@@ -72,27 +78,45 @@ export default function DoctorAppointments() {
                         </p>
                       )}
                     </div>
-                    {appt.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleUpdateStatus(appt.id, 'confirmed')}>
-                          <Check className="h-4 w-4 mr-1" />
-                          Confirm
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      {appt.status === 'pending' && (
+                        <>
+                          <Button size="sm" onClick={() => handleUpdateStatus(appt.id, 'confirmed')}>
+                            <Check className="h-4 w-4 mr-1" />
+                            Confirm
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUpdateStatus(appt.id, 'cancelled')}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      {appt.status === 'confirmed' && (
+                        <Button size="sm" onClick={() => handleUpdateStatus(appt.id, 'completed')}>
+                          Mark Complete
                         </Button>
+                      )}
+                      {appt.status !== 'cancelled' && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleUpdateStatus(appt.id, 'cancelled')}
+                          onClick={() =>
+                            navigate('/doctor/prescriptions', {
+                              state: {
+                                appointmentId: appt.id,
+                                patientId: appt.patient_id,
+                              },
+                            })
+                          }
                         >
-                          <X className="h-4 w-4 mr-1" />
-                          Cancel
+                          Issue Prescription
                         </Button>
-                      </div>
-                    )}
-                    {appt.status === 'confirmed' && (
-                      <Button size="sm" onClick={() => handleUpdateStatus(appt.id, 'completed')}>
-                        Mark Complete
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

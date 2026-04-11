@@ -3,7 +3,9 @@ Doctor dashboard routes: appointments management, prescriptions, patients.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 
 from app.core.security import get_current_user
 from app.models.schemas import (
@@ -11,6 +13,7 @@ from app.models.schemas import (
     MessageResponse,
     PrescriptionCreateRequest,
     DoctorAvailabilityRequest,
+    MedicineItem,
 )
 from app.services.data_service import (
     appointment_service,
@@ -22,6 +25,8 @@ from app.services.data_service import (
 )
 from app.services.notification_service import notification_service
 from app.services.llm_service import llm_service
+from app.services.file_service import file_service
+from app.services.cloudinary_service import cloudinary_service
 
 doctor_router = APIRouter()
 
@@ -97,7 +102,13 @@ def doctor_dashboard(user: dict = Depends(get_current_user)):
 def list_appointments(status: str | None = None, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("doctor", "admin"):
         raise HTTPException(status_code=403, detail="Doctor access required.")
-    return appointment_service.list_for_doctor(user["sub"], status=status)
+    appointments = appointment_service.list_for_doctor(user["sub"], status=status)
+    for appointment in appointments:
+        patient = user_service.get_by_id(appointment.get("patient_id"))
+        if patient:
+            appointment["patient_name"] = patient.get("name")
+            appointment["patient_email"] = patient.get("email")
+    return appointments
 
 
 @doctor_router.patch("/appointments/{appointment_id}")
@@ -182,11 +193,88 @@ def issue_prescription(payload: PrescriptionCreateRequest, user: dict = Depends(
     return rx
 
 
+@doctor_router.post("/prescriptions/upload", status_code=201)
+async def issue_prescription_with_upload(
+    patient_id: str = Form(...),
+    appointment_id: str | None = Form(None),
+    notes: str = Form(""),
+    valid_days: int = Form(30),
+    medicines_json: str = Form("[]"),
+    prescription_file: UploadFile | None = File(None),
+    user: dict = Depends(get_current_user),
+):
+    if user.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Doctor access required.")
+
+    patient = user_service.get_by_id(patient_id)
+    if not patient or patient.get("role") != "patient":
+        raise HTTPException(status_code=404, detail="Patient not found.")
+
+    if appointment_id:
+        appointment = appointment_service.get(appointment_id)
+        if not appointment or appointment.get("doctor_id") != user["sub"]:
+            raise HTTPException(status_code=404, detail="Appointment not found for this doctor.")
+        if appointment.get("patient_id") != patient_id:
+            raise HTTPException(status_code=400, detail="Appointment does not belong to selected patient.")
+
+    try:
+        raw_medicines = json.loads(medicines_json) if medicines_json else []
+        if not isinstance(raw_medicines, list):
+            raise ValueError("Medicines must be a list")
+        medicines = [MedicineItem(**medicine).model_dump() for medicine in raw_medicines]
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid medicines payload: {exc}")
+
+    file_url = None
+    file_public_id = None
+    if prescription_file:
+        file_bytes = await prescription_file.read()
+        if not file_service.validate_file_size(file_bytes):
+            raise HTTPException(status_code=413, detail="File too large.")
+        if not cloudinary_service.enabled:
+            raise HTTPException(status_code=503, detail="Cloudinary is not configured.")
+
+        upload_info = cloudinary_service.upload_prescription_file(file_bytes, prescription_file.filename)
+        file_url = upload_info.get("url")
+        file_public_id = upload_info.get("public_id")
+
+    payload = {
+        "patient_id": patient_id,
+        "doctor_id": user["sub"],
+        "appointment_id": appointment_id,
+        "medicines": medicines,
+        "notes": notes,
+        "valid_days": valid_days,
+        "prescription_file_url": file_url,
+        "prescription_file_public_id": file_public_id,
+    }
+
+    rx = prescription_service.create(payload)
+    if appointment_id:
+        appointment_service.update(appointment_id, {"prescription_id": rx["id"]})
+
+    notification_service.create(
+        recipient_id=patient_id,
+        notif_type="new_prescription",
+        title="New Prescription Issued",
+        message=f"Dr. {user.get('email', 'Your doctor')} has issued a new prescription.",
+        data={"prescription_id": rx["id"]},
+    )
+
+    rx["patient_name"] = patient.get("name")
+    return rx
+
+
 @doctor_router.get("/prescriptions")
 def list_prescriptions(user: dict = Depends(get_current_user)):
     if user.get("role") != "doctor":
         raise HTTPException(status_code=403, detail="Doctor access required.")
-    return prescription_service.list_for_doctor(user["sub"])
+    prescriptions = prescription_service.list_for_doctor(user["sub"])
+    for prescription in prescriptions:
+        patient = user_service.get_by_id(prescription.get("patient_id"))
+        if patient:
+            prescription["patient_name"] = patient.get("name")
+    return prescriptions
 
 
 @doctor_router.get("/patients")

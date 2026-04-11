@@ -126,6 +126,9 @@ class PrescriptionResponse(BaseModel):
     appointment_id: str | None = None
     medicines: list[dict]
     notes: str
+    prescription_file_url: str | None = None
+    prescription_file_public_id: str | None = None
+    patient_name: str | None = None
     status: str
     pharmacy_notes: str | None = None
     issued_at: str

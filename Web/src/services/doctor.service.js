@@ -1,14 +1,14 @@
-import apiClient from '@/lib/api-client';
+import apiClient from "@/lib/api-client";
 
 export const doctorService = {
   async getDashboard() {
-    const response = await apiClient.get('/doctor/dashboard');
+    const response = await apiClient.get("/doctor/dashboard");
     return response.data;
   },
 
   async getAppointments(status = null) {
     const params = status ? { status } : {};
-    const response = await apiClient.get('/doctor/appointments', { params });
+    const response = await apiClient.get("/doctor/appointments", { params });
     return response.data;
   },
 
@@ -23,22 +23,33 @@ export const doctorService = {
   },
 
   async getPatients() {
-    const response = await apiClient.get('/doctor/patients');
+    const response = await apiClient.get("/doctor/patients");
     return response.data;
   },
 
   async issuePrescription(data) {
-    const response = await apiClient.post('/doctor/prescriptions', data);
+    const response = await apiClient.post("/doctor/prescriptions", data);
+    return response.data;
+  },
+
+  async issuePrescriptionWithUpload(formData) {
+    const response = await apiClient.post(
+      "/doctor/prescriptions/upload",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
     return response.data;
   },
 
   async getPrescriptions() {
-    const response = await apiClient.get('/doctor/prescriptions');
+    const response = await apiClient.get("/doctor/prescriptions");
     return response.data;
   },
 
   async getNotifications() {
-    const response = await apiClient.get('/doctor/notifications');
+    const response = await apiClient.get("/doctor/notifications");
     return response.data;
   },
 
@@ -48,7 +59,7 @@ export const doctorService = {
   },
 
   async setAvailability(date, slots) {
-    const response = await apiClient.post('/doctor/availability', {
+    const response = await apiClient.post("/doctor/availability", {
       date,
       available_slots: slots,
     });
@@ -61,7 +72,9 @@ export const doctorService = {
   },
 
   async getDoctorAvailabilityPublic(doctorId, date) {
-    const response = await apiClient.get(`/doctor/public/${doctorId}/availability/${date}`);
+    const response = await apiClient.get(
+      `/doctor/public/${doctorId}/availability/${date}`,
+    );
     return response.data;
   },
 };

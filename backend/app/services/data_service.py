@@ -163,6 +163,8 @@ class PrescriptionService:
             "appointment_id": payload.get("appointment_id"),
             "medicines": payload["medicines"],
             "notes": payload.get("notes", ""),
+            "prescription_file_url": payload.get("prescription_file_url"),
+            "prescription_file_public_id": payload.get("prescription_file_public_id"),
             "status": "issued",
             "pharmacy_notes": None,
             "issued_at": issued_at,
