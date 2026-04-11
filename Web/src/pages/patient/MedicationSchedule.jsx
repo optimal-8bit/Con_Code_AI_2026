@@ -79,11 +79,24 @@ export default function MedicationSchedule() {
 
   const addToMedications = async (medicine) => {
     try {
+      const reminderTimes = Array.isArray(medicine.timing) && medicine.timing.length > 0
+        ? medicine.timing
+        : [];
+      const timesPerDay = Math.max(medicine.times_per_day || 1, reminderTimes.length || 1);
+      const parsedDuration = Number.parseInt(medicine.duration_days, 10);
+      const durationDays = Number.isFinite(parsedDuration) && parsedDuration > 0
+        ? parsedDuration
+        : 1;
+
       await patientService.addMedication({
+        prescription_id: selectedSchedule?.id || null,
         medicine_name: medicine.name,
         dosage: medicine.dosage,
         frequency: `${medicine.times_per_day}x daily`,
-        duration_days: medicine.duration_days,
+        reminder_times: reminderTimes,
+        times_per_day: timesPerDay,
+        duration_days: durationDays,
+        total_doses: timesPerDay * durationDays,
         instructions: medicine.instructions,
         start_date: new Date().toISOString(),
       });

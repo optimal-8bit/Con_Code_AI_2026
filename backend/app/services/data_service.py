@@ -3,8 +3,10 @@ Core data service - user management, appointments, prescriptions, records, medic
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+import json
 from typing import Any
+import re
 
 from pymongo import DESCENDING
 
@@ -217,8 +219,14 @@ class MedicalRecordService:
             "file_url": payload.get("file_url"),
             "report_date": payload.get("report_date"),
             "ai_summary": payload.get("ai_summary"),
+            "linked_schedule_id": payload.get("linked_schedule_id"),
             "created_at": now_utc(),
         }
+
+        # Persist structured content consistently when callers provide dictionaries/lists.
+        if isinstance(doc["content"], (dict, list)):
+            doc["content"] = json.dumps(doc["content"], ensure_ascii=True)
+
         result = self.col.insert_one(doc)
         return serialize_doc(self.col.find_one({"_id": result.inserted_id}))
 
@@ -243,43 +251,350 @@ class MedicationService:
     def __init__(self) -> None:
         self.col = mongo_service.collection("medications")
         self.logs_col = mongo_service.collection("medication_logs")
+        self.records_col = mongo_service.collection("medical_records")
+
+    def _safe_int(self, value: Any, fallback: int) -> int:
+        try:
+            parsed = int(value)
+            return parsed if parsed > 0 else fallback
+        except Exception:
+            return fallback
+
+    def _parse_frequency_for_times_per_day(self, frequency: str) -> int:
+        freq = (frequency or "").strip().lower()
+        if not freq:
+            return 1
+
+        every_hours_match = re.search(r"every\s*(\d+)\s*hour", freq)
+        if every_hours_match:
+            hours = self._safe_int(every_hours_match.group(1), 24)
+            if hours <= 0:
+                return 1
+            return max(1, round(24 / hours))
+
+        number_match = re.search(r"(\d+)\s*(x|times?)\s*(daily|per\s*day)", freq)
+        if number_match:
+            return self._safe_int(number_match.group(1), 1)
+
+        if "once" in freq or "od" in freq:
+            return 1
+        if "twice" in freq or "bd" in freq:
+            return 2
+        if "thrice" in freq or "tds" in freq:
+            return 3
+        if "four" in freq or "qid" in freq:
+            return 4
+        return 1
+
+    def _default_times(self, times_per_day: int) -> list[str]:
+        defaults: dict[int, list[str]] = {
+            1: ["08:00"],
+            2: ["08:00", "20:00"],
+            3: ["06:00", "14:00", "22:00"],
+            4: ["06:00", "12:00", "18:00", "22:00"],
+        }
+        if times_per_day in defaults:
+            return defaults[times_per_day]
+
+        # Spread doses throughout the day for uncommon schedules.
+        step = max(1, round(24 / max(1, times_per_day)))
+        return [f"{((6 + i * step) % 24):02d}:00" for i in range(times_per_day)]
+
+    def _normalize_time(self, time_value: str) -> str | None:
+        if not time_value:
+            return None
+        raw = str(time_value).strip()
+        match = re.fullmatch(r"([01]?\d|2[0-3]):([0-5]\d)", raw)
+        if not match:
+            return None
+        hour = int(match.group(1))
+        minute = match.group(2)
+        return f"{hour:02d}:{minute}"
+
+    def _sanitize_reminder_times(self, reminder_times: list[str] | None, times_per_day: int) -> list[str]:
+        normalized: list[str] = []
+        for time_value in reminder_times or []:
+            normalized_time = self._normalize_time(time_value)
+            if normalized_time and normalized_time not in normalized:
+                normalized.append(normalized_time)
+
+        if not normalized:
+            normalized = self._default_times(times_per_day)
+
+        return normalized[: max(1, times_per_day)]
+
+    def _duration_days_from_dates(self, start_date: Any, end_date: Any) -> int:
+        if not start_date or not end_date:
+            return 1
+        if isinstance(start_date, str):
+            start_date = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+        if isinstance(end_date, str):
+            end_date = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+        try:
+            delta_days = (end_date.date() - start_date.date()).days + 1
+            return max(1, delta_days)
+        except Exception:
+            return 1
+
+    def _backfill_medication_plan_if_needed(self, med_doc: dict) -> dict:
+        if med_doc.get("total_doses") and med_doc.get("times_per_day") and med_doc.get("reminder_times"):
+            return med_doc
+
+        current_reminder_times = med_doc.get("reminder_times", []) or []
+        inferred_times_per_day = self._safe_int(
+            med_doc.get("times_per_day"),
+            len(current_reminder_times) or self._parse_frequency_for_times_per_day(med_doc.get("frequency", "")),
+        )
+        if len(current_reminder_times) > inferred_times_per_day:
+            inferred_times_per_day = len(current_reminder_times)
+
+        inferred_duration_days = self._safe_int(
+            med_doc.get("duration_days"),
+            self._duration_days_from_dates(med_doc.get("start_date"), med_doc.get("end_date")),
+        )
+        normalized_times = self._sanitize_reminder_times(current_reminder_times, inferred_times_per_day)
+        inferred_times_per_day = max(inferred_times_per_day, len(normalized_times))
+        inferred_total_doses = self._safe_int(
+            med_doc.get("total_doses"),
+            max(1, inferred_times_per_day * inferred_duration_days),
+        )
+
+        update_fields = {
+            "times_per_day": inferred_times_per_day,
+            "duration_days": inferred_duration_days,
+            "reminder_times": normalized_times,
+            "total_doses": inferred_total_doses,
+        }
+        self.col.update_one({"_id": med_doc["_id"]}, {"$set": update_fields})
+        med_doc.update(update_fields)
+        return med_doc
+
+    def _today_statuses(self, medication_id: str, reminder_times: list[str]) -> dict[str, str]:
+        today = now_utc().date().isoformat()
+        logs = list(self.logs_col.find({"medication_id": medication_id, "dose_date": today}))
+
+        status_by_time: dict[str, str] = {time_slot: "pending" for time_slot in reminder_times}
+        for log in logs:
+            slot = log.get("scheduled_time")
+            if slot:
+                status_by_time[slot] = log.get("status", "pending")
+
+        return status_by_time
+
+    def _update_batch_completion_record(self, patient_id: str, prescription_id: str) -> None:
+        if not prescription_id:
+            return
+
+        batch_meds = list(self.col.find({"patient_id": patient_id, "prescription_id": prescription_id}))
+        if not batch_meds:
+            return
+
+        if not all(bool(med.get("completed")) for med in batch_meds):
+            return
+
+        existing = self.records_col.find_one({
+            "patient_id": patient_id,
+            "record_type": "medication_batch_completion",
+            "linked_batch_id": prescription_id,
+        })
+        if existing:
+            return
+
+        summary = {
+            "source": "medication_tracker",
+            "batch_id": prescription_id,
+            "medications": [
+                {
+                    "medicine_name": med.get("medicine_name"),
+                    "total_doses": med.get("total_doses", 0),
+                    "doses_taken": med.get("doses_taken", 0),
+                    "doses_skipped": med.get("doses_skipped", 0),
+                    "completed_at": med.get("completed_at"),
+                }
+                for med in batch_meds
+            ],
+        }
+
+        self.records_col.insert_one({
+            "patient_id": patient_id,
+            "record_type": "medication_batch_completion",
+            "title": f"Medication Batch Completed ({len(batch_meds)} medicines)",
+            "content": json.dumps(summary, ensure_ascii=True),
+            "linked_batch_id": prescription_id,
+            "created_at": now_utc(),
+        })
 
     def create(self, patient_id: str, payload: dict) -> dict:
+        raw_reminder_times = payload.get("reminder_times", []) or []
+        times_per_day = self._safe_int(
+            payload.get("times_per_day"),
+            len(raw_reminder_times) or self._parse_frequency_for_times_per_day(payload.get("frequency", "")),
+        )
+        if len(raw_reminder_times) > times_per_day:
+            times_per_day = len(raw_reminder_times)
+
+        duration_days = self._safe_int(payload.get("duration_days"), 1)
+        reminder_times = self._sanitize_reminder_times(raw_reminder_times, times_per_day)
+        times_per_day = max(times_per_day, len(reminder_times))
+        total_doses = self._safe_int(payload.get("total_doses"), max(1, times_per_day * duration_days))
+
+        start_date = payload.get("start_date") or now_utc()
+        if isinstance(start_date, str):
+            start_date = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+
+        end_date = payload.get("end_date")
+        if isinstance(end_date, str):
+            end_date = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+        if end_date is None:
+            end_date = start_date + timedelta(days=max(0, duration_days - 1))
+
         doc = {
             "patient_id": patient_id,
             "prescription_id": payload.get("prescription_id"),
             "medicine_name": payload["medicine_name"],
             "dosage": payload["dosage"],
             "frequency": payload["frequency"],
-            "start_date": payload["start_date"],
-            "end_date": payload.get("end_date"),
-            "reminder_times": payload.get("reminder_times", []),
+            "instructions": payload.get("instructions", ""),
+            "start_date": start_date,
+            "end_date": end_date,
+            "reminder_times": reminder_times,
+            "times_per_day": times_per_day,
+            "duration_days": duration_days,
+            "total_doses": total_doses,
+            "doses_taken": 0,
+            "doses_skipped": 0,
+            "doses_logged": 0,
+            "doses_remaining": total_doses,
+            "completion_percentage": 0.0,
             "active": True,
             "adherence_rate": 0.0,
+            "completed": False,
+            "completed_at": None,
             "created_at": now_utc(),
         }
         result = self.col.insert_one(doc)
-        return serialize_doc(self.col.find_one({"_id": result.inserted_id}))
+        created = serialize_doc(self.col.find_one({"_id": result.inserted_id}))
+        if created:
+            created["today_statuses"] = self._today_statuses(created["id"], created.get("reminder_times", []))
+            created["today_pending_times"] = [
+                time_slot
+                for time_slot, slot_status in created["today_statuses"].items()
+                if slot_status == "pending"
+            ]
+        return created
 
-    def log_dose(self, medication_id: str, patient_id: str, status: str, taken_at=None) -> dict:
-        doc = {
+    def log_dose(self, medication_id: str, patient_id: str, status: str, taken_at=None, scheduled_time: str | None = None) -> dict | None:
+        medication_oid = to_object_id(medication_id)
+        if not medication_oid:
+            return None
+
+        medication = self.col.find_one({"_id": medication_oid, "patient_id": patient_id})
+        if not medication:
+            return None
+
+        medication = self._backfill_medication_plan_if_needed(medication)
+
+        if medication.get("completed"):
+            return None
+
+        logged_at = taken_at or now_utc()
+        if isinstance(logged_at, str):
+            logged_at = datetime.fromisoformat(logged_at.replace("Z", "+00:00"))
+
+        reminder_times = medication.get("reminder_times", [])
+        normalized_time = self._normalize_time(scheduled_time) if scheduled_time else None
+        if normalized_time not in reminder_times:
+            normalized_time = reminder_times[0] if reminder_times else "08:00"
+
+        dose_date = logged_at.date().isoformat()
+        unique_selector = {
             "medication_id": medication_id,
             "patient_id": patient_id,
-            "status": status,
-            "taken_at": taken_at or now_utc(),
-            "logged_at": now_utc(),
+            "dose_date": dose_date,
+            "scheduled_time": normalized_time,
         }
-        result = self.logs_col.insert_one(doc)
+
+        existing_log = self.logs_col.find_one(unique_selector)
+        if existing_log:
+            self.logs_col.update_one(
+                {"_id": existing_log["_id"]},
+                {
+                    "$set": {
+                        "status": status,
+                        "taken_at": logged_at if status in ("taken", "late") else None,
+                        "logged_at": now_utc(),
+                    }
+                },
+            )
+            log_id = existing_log["_id"]
+        else:
+            result = self.logs_col.insert_one(
+                {
+                    **unique_selector,
+                    "status": status,
+                    "taken_at": logged_at if status in ("taken", "late") else None,
+                    "logged_at": now_utc(),
+                }
+            )
+            log_id = result.inserted_id
+
         self._update_adherence(medication_id)
-        return serialize_doc(self.logs_col.find_one({"_id": result.inserted_id}))
+
+        updated_med = self.col.find_one({"_id": medication_oid})
+        if updated_med and updated_med.get("completed") and updated_med.get("prescription_id"):
+            self._update_batch_completion_record(patient_id, updated_med.get("prescription_id"))
+
+        return serialize_doc(self.logs_col.find_one({"_id": log_id}))
 
     def _update_adherence(self, medication_id: str) -> None:
-        total = self.logs_col.count_documents({"medication_id": medication_id})
-        taken = self.logs_col.count_documents({"medication_id": medication_id, "status": "taken"})
-        rate = (taken / total * 100) if total > 0 else 0.0
+        medication_oid = to_object_id(medication_id)
+        if not medication_oid:
+            return
+
+        medication = self.col.find_one({"_id": medication_oid})
+        if not medication:
+            return
+
+        total_doses = self._safe_int(medication.get("total_doses"), 1)
+        logs = list(self.logs_col.find({"medication_id": medication_id}))
+        unique_slots = {
+            (log.get("dose_date"), log.get("scheduled_time"))
+            for log in logs
+            if log.get("dose_date") and log.get("scheduled_time")
+        }
+
+        doses_logged = min(total_doses, len(unique_slots) if unique_slots else len(logs))
+        doses_taken = min(
+            total_doses,
+            sum(1 for log in logs if log.get("status") in ("taken", "late")),
+        )
+        doses_skipped = min(
+            total_doses,
+            sum(1 for log in logs if log.get("status") == "skipped"),
+        )
+
+        adherence_rate = (doses_taken / total_doses * 100) if total_doses > 0 else 0.0
+        completion_percentage = (doses_logged / total_doses * 100) if total_doses > 0 else 0.0
+        doses_remaining = max(total_doses - doses_logged, 0)
+        completed = doses_remaining == 0
+
+        update_fields: dict[str, Any] = {
+            "doses_taken": doses_taken,
+            "doses_skipped": doses_skipped,
+            "doses_logged": doses_logged,
+            "doses_remaining": doses_remaining,
+            "adherence_rate": round(adherence_rate, 1),
+            "completion_percentage": round(completion_percentage, 1),
+            "completed": completed,
+            "active": not completed,
+        }
+
+        if completed and not medication.get("completed_at"):
+            update_fields["completed_at"] = now_utc()
+
         self.col.update_one(
-            {"_id": to_object_id(medication_id)},
-            {"$set": {"adherence_rate": round(rate, 1)}},
+            {"_id": medication_oid},
+            {"$set": update_fields},
         )
 
     def list_active(self, patient_id: str) -> list[dict]:
@@ -288,7 +603,19 @@ class MedicationService:
 
     def list_all(self, patient_id: str) -> list[dict]:
         docs = list(self.col.find({"patient_id": patient_id}).sort("created_at", DESCENDING))
-        return serialize_docs(docs)
+        for med_doc in docs:
+            self._backfill_medication_plan_if_needed(med_doc)
+            self._update_adherence(str(med_doc.get("_id")))
+
+        docs = list(self.col.find({"patient_id": patient_id}).sort("created_at", DESCENDING))
+        serialized = serialize_docs(docs)
+        for med in serialized:
+            today_statuses = self._today_statuses(med["id"], med.get("reminder_times", []))
+            med["today_statuses"] = today_statuses
+            med["today_pending_times"] = [
+                time_slot for time_slot, slot_status in today_statuses.items() if slot_status == "pending"
+            ]
+        return serialized
 
 
 class InventoryService:

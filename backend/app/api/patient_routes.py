@@ -203,9 +203,16 @@ def add_medication(payload: MedicationTrackerRequest, user: dict = Depends(get_c
 
 @patient_router.post("/medications/log", status_code=201)
 def log_medication(payload: MedicationLogRequest, user: dict = Depends(get_current_user)):
-    return medication_service.log_dose(
-        payload.medication_id, user["sub"], payload.status, payload.taken_at
+    log = medication_service.log_dose(
+        payload.medication_id,
+        user["sub"],
+        payload.status,
+        payload.taken_at,
+        payload.scheduled_time,
     )
+    if not log:
+        raise HTTPException(status_code=404, detail="Medication not found or already completed.")
+    return log
 
 
 @patient_router.get("/notifications")
@@ -429,6 +436,50 @@ def get_prescription_schedule(record_id: str, user: dict = Depends(get_current_u
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found.")
     return schedule
+
+
+@patient_router.post("/ai/prescription-schedules/{record_id}/save", status_code=201)
+def save_prescription_schedule_to_medical_records(record_id: str, user: dict = Depends(get_current_user)):
+    """Save a generated prescription schedule into the patient's medical records."""
+    import json
+    from app.db.mongo import to_object_id
+
+    oid = to_object_id(record_id)
+    if not oid:
+        raise HTTPException(status_code=404, detail="Invalid record ID.")
+
+    schedule_doc = ai_record_service.schedule_col.find_one({"_id": oid, "user_id": user["sub"]})
+    if not schedule_doc:
+        raise HTTPException(status_code=404, detail="Schedule not found.")
+
+    existing_record = medical_record_service.col.find_one({
+        "patient_id": user["sub"],
+        "record_type": "medication_schedule",
+        "linked_schedule_id": record_id,
+    })
+    if existing_record:
+        raise HTTPException(status_code=409, detail="This schedule is already saved in medical records.")
+
+    schedule_output = schedule_doc.get("output", {})
+    medicines = schedule_output.get("medicines", [])
+    total_medicines = schedule_output.get("total_medicines") or len(medicines)
+
+    title = f"Medication Schedule ({total_medicines} medicines)"
+    content = {
+        "source": "ai_prescription_schedule",
+        "schedule_summary": schedule_output.get("schedule_summary"),
+        "total_medicines": total_medicines,
+        "next_upcoming_dose": schedule_output.get("next_upcoming_dose"),
+        "medicines": medicines,
+    }
+
+    return medical_record_service.create({
+        "patient_id": user["sub"],
+        "record_type": "medication_schedule",
+        "title": title,
+        "content": json.dumps(content, ensure_ascii=True),
+        "linked_schedule_id": record_id,
+    })
 
 
 @patient_router.get("/ai/report-analyses")

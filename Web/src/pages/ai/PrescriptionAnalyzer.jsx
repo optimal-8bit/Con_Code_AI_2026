@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { aiService } from '@/services/ai.service';
 import { patientService } from '@/services/patient.service';
-import { handleApiError } from '@/lib/utils';
-import { FileText, Upload, AlertCircle, CheckCircle, Pill, Calendar, ShoppingCart } from 'lucide-react';
+import { deriveMedicationPlan, handleApiError } from '@/lib/utils';
+import { FileText, Upload, AlertCircle, CheckCircle, Pill, Calendar, ShoppingCart, Save } from 'lucide-react';
 
 export default function PrescriptionAnalyzer() {
   const navigate = useNavigate();
@@ -20,12 +20,20 @@ export default function PrescriptionAnalyzer() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [scheduleResult, setScheduleResult] = useState(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleSaved, setScheduleSaved] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setResult(null);
+    setScheduleResult(null);
+    setScheduleSaved(false);
+    setScheduleError('');
 
     const data = new FormData();
     data.append('prescription_text', formData.prescription_text);
@@ -48,12 +56,23 @@ export default function PrescriptionAnalyzer() {
     if (!result?.medicines) return;
 
     try {
+      const prescriptionBatchId = result.record_id || null;
+
       for (const med of result.medicines) {
+        const plan = deriveMedicationPlan({
+          frequencyText: med.frequency,
+          durationText: med.duration,
+        });
+
         await patientService.addMedication({
+          prescription_id: prescriptionBatchId,
           medicine_name: med.name,
           dosage: med.dosage,
           frequency: med.frequency,
-          duration_days: parseInt(med.duration) || null,
+          reminder_times: plan.reminderTimes,
+          times_per_day: plan.timesPerDay,
+          duration_days: plan.durationDays,
+          total_doses: plan.totalDoses,
           instructions: med.instructions,
           start_date: new Date().toISOString(),
         });
@@ -65,10 +84,43 @@ export default function PrescriptionAnalyzer() {
     }
   };
 
-  const createSchedule = () => {
+  const createSchedule = async () => {
     if (!result?.medicines) return;
-    // Navigate to medication schedule with prescription data
-    navigate('/patient/medication-schedule', { state: { fromAnalyzer: true } });
+
+    setScheduleLoading(true);
+    setScheduleError('');
+
+    const data = new FormData();
+    data.append('prescription_text', formData.prescription_text || '');
+    if (file) data.append('prescription_file', file);
+
+    try {
+      const schedule = await aiService.getPrescriptionSchedule(data);
+      setScheduleResult(schedule);
+      setScheduleSaved(false);
+      alert('✓ Schedule created. You can now save it to Medical Records.');
+    } catch (err) {
+      setScheduleError(handleApiError(err));
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const saveSchedule = async () => {
+    if (!scheduleResult?.record_id) return;
+
+    setSavingSchedule(true);
+    setScheduleError('');
+
+    try {
+      await patientService.savePrescriptionScheduleToMedicalRecord(scheduleResult.record_id);
+      setScheduleSaved(true);
+      alert('✓ Schedule saved to Medical Records');
+    } catch (err) {
+      setScheduleError(handleApiError(err));
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
   const orderFromPharmacy = () => {
@@ -171,15 +223,58 @@ export default function PrescriptionAnalyzer() {
                   <Pill className="h-4 w-4 mr-2" />
                   Add to My Medications
                 </Button>
-                <Button onClick={createSchedule} variant="outline" className="flex-1 min-w-[200px]">
+                <Button onClick={createSchedule} disabled={scheduleLoading} variant="outline" className="flex-1 min-w-[200px]">
                   <Calendar className="h-4 w-4 mr-2" />
-                  Create Schedule
+                  {scheduleLoading ? 'Creating...' : 'Create Schedule'}
+                </Button>
+                <Button
+                  onClick={saveSchedule}
+                  disabled={!scheduleResult?.record_id || savingSchedule || scheduleSaved}
+                  variant="outline"
+                  className="flex-1 min-w-[200px]"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {savingSchedule ? 'Saving...' : scheduleSaved ? 'Saved to Medical Records' : 'Save Schedule'}
+                </Button>
+                <Button
+                  onClick={() => navigate('/patient/medication-schedule')}
+                  variant="outline"
+                  className="flex-1 min-w-[200px]"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Open Schedule Tracker
                 </Button>
                 <Button onClick={orderFromPharmacy} variant="outline" className="flex-1 min-w-[200px]">
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Order from Pharmacy
                 </Button>
               </div>
+
+              {scheduleError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{scheduleError}</span>
+                </div>
+              )}
+
+              {scheduleResult && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm font-medium text-green-900">Schedule ready</p>
+                  <p className="text-sm text-green-800 mt-1">
+                    {scheduleResult.total_medicines || 0} medicines scheduled.
+                    {scheduleResult.next_upcoming_dose?.time
+                      ? ` Next dose at ${scheduleResult.next_upcoming_dose.time}.`
+                      : ''}
+                  </p>
+                  {scheduleSaved && (
+                    <div className="mt-3">
+                      <Button size="sm" onClick={() => navigate('/patient/records')}>
+                        View in Medical Records
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {result.medicines && result.medicines.length > 0 && (
                 <div>

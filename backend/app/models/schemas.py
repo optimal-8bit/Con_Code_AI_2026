@@ -167,10 +167,15 @@ class MedicationTrackerRequest(BaseModel):
     start_date: datetime
     end_date: datetime | None = None
     reminder_times: list[str] = Field(default_factory=list)  # e.g. ["08:00", "20:00"]
+    instructions: str = ""
+    times_per_day: int | None = None
+    duration_days: int | None = None
+    total_doses: int | None = None
 
 
 class MedicationLogRequest(BaseModel):
     medication_id: str
+    scheduled_time: str | None = None  # e.g. "08:00"
     taken_at: datetime | None = None
     status: Literal["taken", "skipped", "late"] = "taken"
 
@@ -182,10 +187,23 @@ class MedicationResponse(BaseModel):
     medicine_name: str
     dosage: str
     frequency: str
+    instructions: str = ""
     start_date: str
     end_date: str | None = None
     reminder_times: list[str]
+    times_per_day: int = 1
+    duration_days: int = 1
+    total_doses: int = 1
+    doses_taken: int = 0
+    doses_skipped: int = 0
+    doses_logged: int = 0
+    doses_remaining: int = 1
+    completion_percentage: float = 0.0
     adherence_rate: float = 0.0
+    completed: bool = False
+    completed_at: str | None = None
+    today_statuses: dict[str, str] = Field(default_factory=dict)
+    today_pending_times: list[str] = Field(default_factory=list)
     created_at: str
 
 

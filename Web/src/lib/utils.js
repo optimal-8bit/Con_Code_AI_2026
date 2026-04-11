@@ -89,6 +89,79 @@ export function fileToBase64(file) {
   });
 }
 
+function defaultReminderTimes(timesPerDay) {
+  const defaults = {
+    1: ['08:00'],
+    2: ['08:00', '20:00'],
+    3: ['06:00', '14:00', '22:00'],
+    4: ['06:00', '12:00', '18:00', '22:00'],
+  };
+
+  if (defaults[timesPerDay]) return defaults[timesPerDay];
+
+  const safeTimes = Math.max(1, timesPerDay || 1);
+  const step = Math.max(1, Math.round(24 / safeTimes));
+  return Array.from({ length: safeTimes }, (_, idx) => {
+    const hour = (6 + idx * step) % 24;
+    return `${hour.toString().padStart(2, '0')}:00`;
+  });
+}
+
+export function parseDurationDays(durationText) {
+  if (durationText === null || durationText === undefined) return 1;
+  const match = String(durationText).match(/\d+/);
+  if (!match) return 1;
+  const parsed = Number.parseInt(match[0], 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+export function deriveMedicationPlan({ frequencyText = '', durationText = '', reminderTimes = [] } = {}) {
+  const frequency = String(frequencyText || '').toLowerCase();
+
+  let timesPerDay = 1;
+
+  const everyHoursMatch = frequency.match(/every\s*(\d+)\s*hour/);
+  if (everyHoursMatch) {
+    const everyHours = Number.parseInt(everyHoursMatch[1], 10);
+    if (everyHours > 0) {
+      timesPerDay = Math.max(1, Math.round(24 / everyHours));
+    }
+  } else {
+    const explicitTimesMatch = frequency.match(/(\d+)\s*(x|times?)\s*(daily|per\s*day)/);
+    if (explicitTimesMatch) {
+      const explicitTimes = Number.parseInt(explicitTimesMatch[1], 10);
+      if (explicitTimes > 0) timesPerDay = explicitTimes;
+    } else if (frequency.includes('twice') || frequency.includes('bd')) {
+      timesPerDay = 2;
+    } else if (frequency.includes('thrice') || frequency.includes('tds')) {
+      timesPerDay = 3;
+    } else if (frequency.includes('four') || frequency.includes('qid')) {
+      timesPerDay = 4;
+    } else if (frequency.includes('once') || frequency.includes('od')) {
+      timesPerDay = 1;
+    }
+  }
+
+  const cleanReminderTimes = (Array.isArray(reminderTimes) ? reminderTimes : [])
+    .map((time) => String(time || '').trim())
+    .filter((time) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(time));
+
+  const normalizedReminderTimes = cleanReminderTimes.length > 0
+    ? cleanReminderTimes.slice(0, Math.max(timesPerDay, cleanReminderTimes.length))
+    : defaultReminderTimes(timesPerDay);
+
+  const durationDays = parseDurationDays(durationText);
+  const adjustedTimesPerDay = Math.max(timesPerDay, normalizedReminderTimes.length);
+  const totalDoses = adjustedTimesPerDay * durationDays;
+
+  return {
+    timesPerDay: adjustedTimesPerDay,
+    durationDays,
+    reminderTimes: normalizedReminderTimes,
+    totalDoses,
+  };
+}
+
 export function handleApiError(error) {
   if (error.response) {
     // Handle FastAPI validation errors (422)
