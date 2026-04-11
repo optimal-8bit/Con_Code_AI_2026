@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.db.mongo import now_utc
 from app.core.security import get_current_user
 from app.models.schemas import (
     InventoryItemRequest,
@@ -15,6 +16,7 @@ from app.services.data_service import (
     inventory_service,
     prescription_service,
     user_service,
+    order_service,
 )
 from app.services.notification_service import notification_service
 from app.services.llm_service import llm_service
@@ -29,6 +31,12 @@ def pharmacy_dashboard(user: dict = Depends(get_current_user)):
     
     uid = user["sub"]
     
+    # Get orders
+    all_orders = order_service.list_for_pharmacy(uid, limit=100)
+    pending_orders = [o for o in all_orders if o.get("status") in ("pending", "confirmed")]
+    completed_orders = [o for o in all_orders if o.get("status") in ("ready", "delivered")]
+    
+    # Get prescriptions
     pending_rx = prescription_service.list_for_pharmacy(status="sent_to_pharmacy", limit=20)
     issued_rx = prescription_service.list_for_pharmacy(status="issued", limit=20)
     all_pending = pending_rx + issued_rx
@@ -37,8 +45,20 @@ def pharmacy_dashboard(user: dict = Depends(get_current_user)):
     low_stock = inventory_service.get_low_stock(uid)
     inventory = inventory_service.list_all(uid)
     notifications = notification_service.get_for_user(uid, limit=10)
+    
+    # Calculate revenue
+    total_revenue = sum(o.get("total", 0) for o in all_orders if o.get("payment_status") == "paid")
+    today_revenue = sum(
+        o.get("total", 0) for o in all_orders 
+        if o.get("payment_status") == "paid" and o.get("created_at", "")[:10] == str(now_utc())[:10]
+    )
 
     metrics = {
+        "pending_orders": len(pending_orders),
+        "completed_orders": len(completed_orders),
+        "total_orders": len(all_orders),
+        "total_revenue": round(total_revenue, 2),
+        "today_revenue": round(today_revenue, 2),
         "pending_prescriptions": len(all_pending),
         "dispensed_total": dispensed,
         "total_inventory_items": len(inventory),
@@ -46,19 +66,19 @@ def pharmacy_dashboard(user: dict = Depends(get_current_user)):
         "unread_notifications": notification_service.count_unread(uid),
     }
 
-    ai_summary = "Monitor your prescription queue and replenish low-stock items."
+    ai_summary = "Monitor your order queue and replenish low-stock items."
     ai_recommendations = [
-        "Review pending prescriptions and dispense promptly.",
+        "Process pending orders promptly.",
         "Order stock for items below reorder level.",
         "Verify drug interactions before dispensing.",
     ]
 
-    if llm_service.enabled and low_stock:
+    if llm_service.enabled and (pending_orders or low_stock):
         medicines_low = [item.get("medicine_name", "") for item in low_stock[:5]]
         try:
             result = llm_service.invoke_json(
                 "You are an AI assistant for pharmacy management.",
-                f"Pending prescriptions: {len(all_pending)}. Low stock items: {medicines_low}. "
+                f"Pending orders: {len(pending_orders)}. Low stock items: {medicines_low}. "
                 f"Return JSON: {{\"summary\": \"...\", \"recommendations\": [\"...\"]}}",
                 {"summary": ai_summary, "recommendations": ai_recommendations},
             )
@@ -69,8 +89,10 @@ def pharmacy_dashboard(user: dict = Depends(get_current_user)):
 
     return {
         "metrics": metrics,
+        "pending_orders": pending_orders[:10],
+        "completed_orders": completed_orders[:10],
         "pending_prescriptions": all_pending[:10],
-        "dispensed_today": [],  # TODO: filter by today
+        "dispensed_today": [],
         "low_stock_alerts": low_stock,
         "notifications": notifications[:5],
         "ai_inventory_summary": ai_summary,
@@ -168,3 +190,63 @@ def get_notifications(user: dict = Depends(get_current_user)):
     if user.get("role") not in ("pharmacy", "admin"):
         raise HTTPException(status_code=403, detail="Pharmacy access required.")
     return notification_service.get_for_user(user["sub"])
+
+
+# ─── Order Management ─────────────────────────────────────────────────────────
+
+@pharmacy_router.get("/orders")
+def list_orders(status: str | None = None, user: dict = Depends(get_current_user)):
+    """List all orders for this pharmacy."""
+    if user.get("role") not in ("pharmacy", "admin"):
+        raise HTTPException(status_code=403, detail="Pharmacy access required.")
+    return order_service.list_for_pharmacy(user["sub"], status=status)
+
+
+@pharmacy_router.get("/orders/{order_id}")
+def get_order(order_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific order."""
+    if user.get("role") not in ("pharmacy", "admin"):
+        raise HTTPException(status_code=403, detail="Pharmacy access required.")
+    
+    order = order_service.get(order_id)
+    if not order or order["pharmacy_id"] != user["sub"]:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    return order
+
+
+@pharmacy_router.patch("/orders/{order_id}/status")
+def update_order_status(
+    order_id: str,
+    status: str,
+    user: dict = Depends(get_current_user)
+):
+    """Update order status (preparing, ready, delivered, cancelled)."""
+    if user.get("role") not in ("pharmacy", "admin"):
+        raise HTTPException(status_code=403, detail="Pharmacy access required.")
+    
+    order = order_service.get(order_id)
+    if not order or order["pharmacy_id"] != user["sub"]:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    
+    updated = order_service.update(order_id, {"status": status})
+    
+    # Notify patient
+    status_messages = {
+        "confirmed": "Your order has been confirmed and is being prepared.",
+        "preparing": "Your order is being prepared.",
+        "ready": "Your order is ready for pickup!",
+        "delivered": "Your order has been delivered.",
+        "cancelled": "Your order has been cancelled.",
+    }
+    
+    msg = status_messages.get(status)
+    if msg:
+        notification_service.create(
+            recipient_id=order["patient_id"],
+            notif_type="order_update",
+            title=f"Order {status.capitalize()}",
+            message=msg,
+            data={"order_id": order_id},
+        )
+    
+    return updated

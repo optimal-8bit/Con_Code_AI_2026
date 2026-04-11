@@ -38,6 +38,11 @@ class Settings:
     # File Upload
     max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     upload_dir: str = str(BACKEND_ROOT / "uploads")
+    
+    # Stripe Payment
+    stripe_secret_key: str | None = os.getenv("STRIPE_SECRET_KEY")
+    stripe_publishable_key: str | None = os.getenv("STRIPE_PUBLISHABLE_KEY")
+    stripe_webhook_secret: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")
 
     @property
     def cors_origin_list(self) -> list[str]:

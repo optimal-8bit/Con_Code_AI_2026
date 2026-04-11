@@ -407,6 +407,141 @@ class AIRecordService:
         return str(result.inserted_id)
 
 
+class OrderService:
+    """Manages pharmacy orders and payments."""
+
+    def __init__(self) -> None:
+        self.col = mongo_service.collection("orders")
+
+    def create(self, payload: dict) -> dict:
+        medicines = payload.get("medicines", [])
+        subtotal = sum(item["quantity"] * item["price_per_unit"] for item in medicines)
+        tax = round(subtotal * 0.08, 2)  # 8% tax
+        total = round(subtotal + tax, 2)
+
+        doc = {
+            "patient_id": payload["patient_id"],
+            "pharmacy_id": payload["pharmacy_id"],
+            "prescription_id": payload.get("prescription_id"),
+            "medicines": medicines,
+            "subtotal": subtotal,
+            "tax": tax,
+            "total": total,
+            "status": "pending",  # pending, confirmed, preparing, ready, delivered, cancelled
+            "payment_status": "pending",  # pending, paid, failed, refunded
+            "payment_intent_id": None,
+            "delivery_address": payload.get("delivery_address", ""),
+            "notes": payload.get("notes", ""),
+            "created_at": now_utc(),
+            "updated_at": now_utc(),
+        }
+        result = self.col.insert_one(doc)
+        return serialize_doc(self.col.find_one({"_id": result.inserted_id}))
+
+    def get(self, order_id: str) -> dict | None:
+        oid = to_object_id(order_id)
+        return serialize_doc(self.col.find_one({"_id": oid})) if oid else None
+
+    def update(self, order_id: str, updates: dict) -> dict | None:
+        oid = to_object_id(order_id)
+        if not oid:
+            return None
+        updates["updated_at"] = now_utc()
+        self.col.update_one({"_id": oid}, {"$set": updates})
+        return serialize_doc(self.col.find_one({"_id": oid}))
+
+    def list_for_patient(self, patient_id: str, limit: int = 20) -> list[dict]:
+        docs = list(self.col.find({"patient_id": patient_id}).sort("created_at", DESCENDING).limit(limit))
+        return serialize_docs(docs)
+
+    def list_for_pharmacy(self, pharmacy_id: str, status: str | None = None, limit: int = 50) -> list[dict]:
+        query: dict = {"pharmacy_id": pharmacy_id}
+        if status:
+            query["status"] = status
+        docs = list(self.col.find(query).sort("created_at", DESCENDING).limit(limit))
+        return serialize_docs(docs)
+
+    def count_by_status(self, pharmacy_id: str) -> dict:
+        pipeline = [
+            {"$match": {"pharmacy_id": pharmacy_id}},
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        ]
+        result = {item["_id"]: item["count"] for item in self.col.aggregate(pipeline)}
+        return result
+
+
+class DoctorAvailabilityService:
+    """Manages doctor availability slots."""
+
+    def __init__(self) -> None:
+        self.col = mongo_service.collection("doctor_availability")
+
+    def set_availability(self, doctor_id: str, date: str, slots: list[str]) -> dict:
+        """Set available time slots for a specific date."""
+        from datetime import datetime
+        
+        # Remove existing availability for this date
+        self.col.delete_many({"doctor_id": doctor_id, "date": date})
+        
+        # Insert new slots
+        docs = []
+        for slot in slots:
+            docs.append({
+                "doctor_id": doctor_id,
+                "date": date,
+                "time": slot,
+                "is_booked": False,
+                "created_at": now_utc(),
+            })
+        
+        if docs:
+            self.col.insert_many(docs)
+        
+        return {"date": date, "slots": slots}
+
+    def get_available_slots(self, doctor_id: str, date: str) -> list[str]:
+        """Get available (unbooked) slots for a specific date."""
+        docs = list(self.col.find({
+            "doctor_id": doctor_id,
+            "date": date,
+            "is_booked": False,
+        }).sort("time", 1))
+        return [doc["time"] for doc in docs]
+
+    def book_slot(self, doctor_id: str, date: str, time: str, appointment_id: str) -> bool:
+        """Mark a slot as booked."""
+        result = self.col.update_one(
+            {
+                "doctor_id": doctor_id,
+                "date": date,
+                "time": time,
+                "is_booked": False,
+            },
+            {
+                "$set": {
+                    "is_booked": True,
+                    "appointment_id": appointment_id,
+                    "booked_at": now_utc(),
+                }
+            }
+        )
+        return result.modified_count > 0
+
+    def release_slot(self, appointment_id: str) -> bool:
+        """Release a booked slot (when appointment is cancelled)."""
+        result = self.col.update_one(
+            {"appointment_id": appointment_id},
+            {
+                "$set": {
+                    "is_booked": False,
+                    "appointment_id": None,
+                    "booked_at": None,
+                }
+            }
+        )
+        return result.modified_count > 0
+
+
 # Singleton instances
 user_service = UserService()
 appointment_service = AppointmentService()
@@ -415,3 +550,5 @@ medical_record_service = MedicalRecordService()
 medication_service = MedicationService()
 inventory_service = InventoryService()
 ai_record_service = AIRecordService()
+order_service = OrderService()
+doctor_availability_service = DoctorAvailabilityService()

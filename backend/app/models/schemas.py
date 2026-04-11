@@ -444,6 +444,64 @@ class DoctorListResponse(BaseModel):
     city: str | None = None
 
 
+class DoctorAvailabilityRequest(BaseModel):
+    date: str  # YYYY-MM-DD
+    available_slots: list[str]  # ["09:00", "10:00", "11:00"]
+
+
+# ─── Pharmacy Orders ──────────────────────────────────────────────────────────
+
+class OrderMedicineItem(BaseModel):
+    medicine_name: str
+    quantity: int
+    price_per_unit: float
+    inventory_item_id: str | None = None
+
+
+class OrderCreateRequest(BaseModel):
+    pharmacy_id: str
+    prescription_id: str | None = None
+    medicines: list[OrderMedicineItem]
+    delivery_address: str = ""
+    notes: str = ""
+
+
+class OrderResponse(BaseModel):
+    id: str
+    patient_id: str
+    pharmacy_id: str
+    prescription_id: str | None = None
+    medicines: list[dict]
+    subtotal: float
+    tax: float
+    total: float
+    status: str
+    payment_status: str
+    payment_intent_id: str | None = None
+    delivery_address: str
+    notes: str
+    created_at: str
+    updated_at: str
+
+
+class PharmacyMatchResponse(BaseModel):
+    pharmacy_id: str
+    pharmacy_name: str
+    pharmacy_email: str
+    available_medicines: list[dict]  # {name, available, price, inventory_id}
+    total_price: float
+    availability_percentage: float
+
+
+class PaymentIntentRequest(BaseModel):
+    order_id: str
+
+
+class PaymentIntentResponse(BaseModel):
+    client_secret: str
+    publishable_key: str
+
+
 # ─── Common ───────────────────────────────────────────────────────────────────
 
 class PaginatedResponse(BaseModel):

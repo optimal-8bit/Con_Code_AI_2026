@@ -15,6 +15,8 @@ from app.models.schemas import (
     MessageResponse,
     PatientDashboardResponse,
     DashboardMetrics,
+    OrderCreateRequest,
+    PaymentIntentRequest,
 )
 from app.services.data_service import (
     appointment_service,
@@ -23,6 +25,8 @@ from app.services.data_service import (
     prescription_service,
     user_service,
     ai_record_service,
+    order_service,
+    inventory_service,
 )
 from app.services.notification_service import notification_service
 from app.services.file_service import file_service
@@ -221,6 +225,183 @@ def mark_notification_read(notif_id: str, user: dict = Depends(get_current_user)
 def mark_all_read(user: dict = Depends(get_current_user)):
     count = notification_service.mark_all_read(user["sub"])
     return MessageResponse(message=f"Marked {count} notifications as read.")
+
+
+@patient_router.get("/doctors")
+def search_doctors(specialty: str | None = None, name: str | None = None):
+    filters = {}
+    if specialty:
+        filters["profile.specialty"] = {"$regex": specialty, "$options": "i"}
+    if name:
+        filters["name"] = {"$regex": name, "$options": "i"}
+    doctors = user_service.list_by_role("doctor", filters)
+    return [user_service.safe_user(d) for d in doctors]
+
+
+# ─── Pharmacy & Orders ────────────────────────────────────────────────────────
+
+@patient_router.post("/match-pharmacies")
+def match_pharmacies_for_prescription(medicines: list[dict], user: dict = Depends(get_current_user)):
+    """
+    Match pharmacies that can fulfill a prescription.
+    Input: list of {name, dosage, quantity}
+    Output: list of pharmacies with availability and pricing
+    """
+    pharmacies = user_service.list_by_role("pharmacy", limit=100)
+    matches = []
+    
+    for pharmacy in pharmacies:
+        pharmacy_inventory = inventory_service.list_all(pharmacy["id"])
+        available_medicines = []
+        total_price = 0.0
+        available_count = 0
+        
+        for med in medicines:
+            med_name = med.get("name", "").lower()
+            quantity = med.get("quantity", 1)
+            
+            # Find matching medicine in inventory
+            inventory_item = None
+            for item in pharmacy_inventory:
+                if med_name in item.get("medicine_name", "").lower():
+                    inventory_item = item
+                    break
+            
+            if inventory_item and inventory_item.get("quantity", 0) >= quantity:
+                price = inventory_item.get("price_per_unit", 0) * quantity
+                available_medicines.append({
+                    "name": med.get("name"),
+                    "available": True,
+                    "price": price,
+                    "price_per_unit": inventory_item.get("price_per_unit", 0),
+                    "inventory_id": inventory_item["id"],
+                    "quantity": quantity,
+                })
+                total_price += price
+                available_count += 1
+            else:
+                available_medicines.append({
+                    "name": med.get("name"),
+                    "available": False,
+                    "price": 0,
+                    "quantity": quantity,
+                })
+        
+        availability_percentage = (available_count / len(medicines) * 100) if medicines else 0
+        
+        matches.append({
+            "pharmacy_id": pharmacy["id"],
+            "pharmacy_name": pharmacy.get("name", "Unknown Pharmacy"),
+            "pharmacy_email": pharmacy.get("email", ""),
+            "pharmacy_phone": pharmacy.get("phone", ""),
+            "available_medicines": available_medicines,
+            "total_price": round(total_price, 2),
+            "availability_percentage": round(availability_percentage, 1),
+        })
+    
+    # Sort by availability percentage (highest first)
+    matches.sort(key=lambda x: x["availability_percentage"], reverse=True)
+    return matches
+
+
+@patient_router.post("/orders", status_code=201)
+def create_order(payload: OrderCreateRequest, user: dict = Depends(get_current_user)):
+    """Create a new pharmacy order."""
+    data = payload.model_dump()
+    data["patient_id"] = user["sub"]
+    
+    order = order_service.create(data)
+    
+    # Notify pharmacy
+    notification_service.create(
+        recipient_id=payload.pharmacy_id,
+        notif_type="new_order",
+        title="New Order Received",
+        message=f"New order #{order['id'][:8]} with {len(payload.medicines)} medicine(s). Total: ${order['total']}",
+        data={"order_id": order["id"]},
+    )
+    
+    return order
+
+
+@patient_router.get("/orders")
+def list_orders(user: dict = Depends(get_current_user)):
+    """List all orders for the current patient."""
+    return order_service.list_for_patient(user["sub"])
+
+
+@patient_router.get("/orders/{order_id}")
+def get_order(order_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific order."""
+    order = order_service.get(order_id)
+    if not order or order["patient_id"] != user["sub"]:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    return order
+
+
+@patient_router.post("/orders/{order_id}/payment-intent")
+def create_payment_intent(order_id: str, user: dict = Depends(get_current_user)):
+    """Create a Stripe payment intent for an order."""
+    from app.core.config import settings
+    
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Payment processing not configured.")
+    
+    order = order_service.get(order_id)
+    if not order or order["patient_id"] != user["sub"]:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    
+    if order.get("payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="Order already paid.")
+    
+    try:
+        import stripe
+        stripe.api_key = settings.stripe_secret_key
+        
+        # Create payment intent
+        intent = stripe.PaymentIntent.create(
+            amount=int(order["total"] * 100),  # Convert to cents
+            currency="usd",
+            metadata={
+                "order_id": order_id,
+                "patient_id": user["sub"],
+            },
+        )
+        
+        # Update order with payment intent ID
+        order_service.update(order_id, {"payment_intent_id": intent.id})
+        
+        return {
+            "client_secret": intent.client_secret,
+            "publishable_key": settings.stripe_publishable_key,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Payment intent creation failed: {str(e)}")
+
+
+@patient_router.post("/orders/{order_id}/confirm-payment")
+def confirm_payment(order_id: str, user: dict = Depends(get_current_user)):
+    """Confirm payment completion for an order."""
+    order = order_service.get(order_id)
+    if not order or order["patient_id"] != user["sub"]:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    
+    # Update order status
+    order_service.update(order_id, {
+        "payment_status": "paid",
+        "status": "confirmed",
+    })
+    
+    # Notify pharmacy
+    notification_service.create(
+        recipient_id=order["pharmacy_id"],
+        notif_type="order_paid",
+        title="Order Payment Confirmed",
+        message=f"Payment confirmed for order #{order_id[:8]}. Total: ${order['total']}",
+        data={"order_id": order_id},
+    )
+    
+    return MessageResponse(message="Payment confirmed successfully.")
 
 
 @patient_router.get("/doctors")

@@ -10,6 +10,7 @@ from app.models.schemas import (
     AppointmentUpdateRequest,
     MessageResponse,
     PrescriptionCreateRequest,
+    DoctorAvailabilityRequest,
 )
 from app.services.data_service import (
     appointment_service,
@@ -17,6 +18,7 @@ from app.services.data_service import (
     prescription_service,
     user_service,
     ai_record_service,
+    doctor_availability_service,
 )
 from app.services.notification_service import notification_service
 from app.services.llm_service import llm_service
@@ -215,3 +217,40 @@ def get_notifications(user: dict = Depends(get_current_user)):
 def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
     notification_service.mark_read(notif_id, user["sub"])
     return MessageResponse(message="Marked as read.")
+
+
+# ─── Availability Management ──────────────────────────────────────────────────
+
+@doctor_router.post("/availability")
+def set_availability(payload: DoctorAvailabilityRequest, user: dict = Depends(get_current_user)):
+    """Set available time slots for a specific date."""
+    if user.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Doctor access required.")
+    
+    result = doctor_availability_service.set_availability(
+        user["sub"],
+        payload.date,
+        payload.available_slots
+    )
+    return result
+
+
+@doctor_router.get("/availability/{date}")
+def get_availability(date: str, user: dict = Depends(get_current_user)):
+    """Get available slots for a specific date."""
+    if user.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Doctor access required.")
+    
+    slots = doctor_availability_service.get_available_slots(user["sub"], date)
+    return {"date": date, "available_slots": slots}
+
+
+@doctor_router.get("/public/{doctor_id}/availability/{date}")
+def get_doctor_availability_public(doctor_id: str, date: str):
+    """Public endpoint to check doctor availability (for patients)."""
+    doctor = user_service.get_by_id(doctor_id)
+    if not doctor or doctor.get("role") != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found.")
+    
+    slots = doctor_availability_service.get_available_slots(doctor_id, date)
+    return {"date": date, "available_slots": slots}
