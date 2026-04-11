@@ -14,6 +14,8 @@ import PatientRecords from '@/pages/patient/PatientRecords';
 import PatientOrders from '@/pages/patient/PatientOrders';
 import PatientDoctors from '@/pages/patient/PatientDoctors';
 import PatientProfile from '@/pages/patient/PatientProfile';
+import MedicationSchedule from '@/pages/patient/MedicationSchedule';
+import PharmacyOrder from '@/pages/patient/PharmacyOrder';
 
 // Doctor Pages
 import DoctorDashboard from '@/pages/doctor/DoctorDashboard';
@@ -141,6 +143,22 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['patient']}>
               <PatientProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/patient/medication-schedule"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <MedicationSchedule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/patient/pharmacy-order"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <PharmacyOrder />
             </ProtectedRoute>
           }
         />

@@ -29,11 +29,12 @@ export default function SymptomChecker() {
 
     const data = new FormData();
     data.append('symptom_text', formData.symptom_text);
-    data.append('patient_age', formData.patient_age || '');
-    data.append('patient_gender', formData.patient_gender || '');
-    data.append('known_conditions', formData.known_conditions || '');
-    data.append('current_medications', formData.current_medications || '');
-    data.append('duration_days', formData.duration_days || '');
+    // Only append optional fields if they have values
+    if (formData.patient_age) data.append('patient_age', formData.patient_age);
+    if (formData.patient_gender) data.append('patient_gender', formData.patient_gender);
+    if (formData.known_conditions) data.append('known_conditions', formData.known_conditions);
+    if (formData.current_medications) data.append('current_medications', formData.current_medications);
+    if (formData.duration_days) data.append('duration_days', formData.duration_days);
     if (file) data.append('image_file', file);
 
     try {

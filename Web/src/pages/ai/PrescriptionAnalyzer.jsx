@@ -1,13 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { aiService } from '@/services/ai.service';
+import { patientService } from '@/services/patient.service';
 import { handleApiError } from '@/lib/utils';
-import { FileText, Upload, AlertCircle, CheckCircle, Pill } from 'lucide-react';
+import { FileText, Upload, AlertCircle, CheckCircle, Pill, Calendar, ShoppingCart } from 'lucide-react';
 
 export default function PrescriptionAnalyzer() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     prescription_text: '',
     patient_age: '',
@@ -26,8 +29,9 @@ export default function PrescriptionAnalyzer() {
 
     const data = new FormData();
     data.append('prescription_text', formData.prescription_text);
-    data.append('patient_age', formData.patient_age || '');
-    data.append('patient_conditions', formData.patient_conditions || '');
+    // Only append optional fields if they have values
+    if (formData.patient_age) data.append('patient_age', formData.patient_age);
+    if (formData.patient_conditions) data.append('patient_conditions', formData.patient_conditions);
     if (file) data.append('prescription_file', file);
 
     try {
@@ -38,6 +42,47 @@ export default function PrescriptionAnalyzer() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const addAllToMedications = async () => {
+    if (!result?.medicines) return;
+
+    try {
+      for (const med of result.medicines) {
+        await patientService.addMedication({
+          medicine_name: med.name,
+          dosage: med.dosage,
+          frequency: med.frequency,
+          duration_days: parseInt(med.duration) || null,
+          instructions: med.instructions,
+          start_date: new Date().toISOString(),
+        });
+      }
+      alert(`✓ ${result.medicines.length} medicines added to your medications`);
+      navigate('/patient/medications');
+    } catch (err) {
+      alert(handleApiError(err));
+    }
+  };
+
+  const createSchedule = () => {
+    if (!result?.medicines) return;
+    // Navigate to medication schedule with prescription data
+    navigate('/patient/medication-schedule', { state: { fromAnalyzer: true } });
+  };
+
+  const orderFromPharmacy = () => {
+    if (!result?.medicines) return;
+    // Navigate to pharmacy order with medicines
+    navigate('/patient/pharmacy-order', { 
+      state: { 
+        medicines: result.medicines.map(m => ({
+          name: m.name,
+          dosage: m.dosage,
+          quantity: 1, // Default quantity
+        }))
+      } 
+    });
   };
 
   return (
@@ -120,6 +165,22 @@ export default function PrescriptionAnalyzer() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                <Button onClick={addAllToMedications} className="flex-1 min-w-[200px]">
+                  <Pill className="h-4 w-4 mr-2" />
+                  Add to My Medications
+                </Button>
+                <Button onClick={createSchedule} variant="outline" className="flex-1 min-w-[200px]">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Create Schedule
+                </Button>
+                <Button onClick={orderFromPharmacy} variant="outline" className="flex-1 min-w-[200px]">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Order from Pharmacy
+                </Button>
+              </div>
+
               {result.medicines && result.medicines.length > 0 && (
                 <div>
                   <h3 className="font-medium text-gray-900 mb-3">Medicines:</h3>

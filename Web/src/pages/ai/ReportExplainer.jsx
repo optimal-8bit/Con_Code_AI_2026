@@ -29,8 +29,9 @@ export default function ReportExplainer() {
     const data = new FormData();
     data.append('report_text', formData.report_text);
     data.append('question', formData.question);
-    data.append('patient_age', formData.patient_age || '');
-    data.append('patient_gender', formData.patient_gender || '');
+    // Only append optional fields if they have values
+    if (formData.patient_age) data.append('patient_age', formData.patient_age);
+    if (formData.patient_gender) data.append('patient_gender', formData.patient_gender);
     data.append('report_type', formData.report_type);
     if (file) data.append('report_file', file);
 

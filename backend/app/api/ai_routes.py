@@ -70,6 +70,10 @@ async def symptom_checker(
         symptom_text, voice_transcript, image_description,
         patient_age, patient_gender, conditions_list, meds_list, duration_days
     )
+    
+    # Add image analysis instruction if image is provided
+    if image_base64:
+        user_prompt += "\n\n**IMPORTANT: An image has been provided. Please carefully analyze the image for any visible symptoms, skin conditions, rashes, injuries, or other health-related visual indicators. Include your observations from the image in your analysis.**"
 
     fallback = {
         "possible_conditions": [{"name": "Unspecified condition", "probability": "unknown", "description": "Please describe symptoms more clearly."}],
@@ -96,6 +100,10 @@ async def symptom_checker(
         image_base64=image_base64,
         mime_type=mime_type,
     )
+
+    # Normalize severity to lowercase (AI sometimes returns capitalized values)
+    if "severity" in result and isinstance(result["severity"], str):
+        result["severity"] = result["severity"].lower()
 
     record_id = ai_record_service.save_symptom_check(
         user["sub"],
@@ -169,6 +177,10 @@ async def prescription_analyzer(
         f"Patient Conditions: {', '.join(conditions_list) or 'none'}\n\n"
         "Extract all medications and provide patient-friendly instructions."
     )
+    
+    # Add image analysis instruction if image is provided
+    if image_base64:
+        prompt += "\n\n**IMPORTANT: A prescription image has been provided. Please carefully read and extract all medicine names, dosages, frequencies, and instructions from the prescription image. Include all visible details.**"
 
     fallback = {
         "medicines": [{
@@ -246,6 +258,10 @@ async def report_explainer(
         f"Medical Report:\n{report_text}\n\n"
         "Analyze this report comprehensively."
     )
+    
+    # Add image analysis instruction if image is provided
+    if image_base64:
+        prompt += "\n\n**IMPORTANT: A medical report image has been provided. Please carefully read and extract all test parameters, values, reference ranges, and findings from the report image. Analyze all visible data and provide a comprehensive interpretation.**"
 
     fallback = {
         "plain_language_summary": "Medical report received. Please consult a doctor for interpretation.",
@@ -286,6 +302,9 @@ async def report_explainer(
     for param in result.get("parameters", []):
         if param.get("interpretation") is None:
             param["interpretation"] = ""
+        # Normalize parameter status to lowercase
+        if "status" in param and isinstance(param["status"], str):
+            param["status"] = param["status"].lower()
     
     if not result.get("abnormalities"):
         result["abnormalities"] = []
@@ -304,6 +323,9 @@ async def report_explainer(
     
     if not result.get("urgency"):
         result["urgency"] = "routine"
+    # Normalize urgency to lowercase
+    elif isinstance(result["urgency"], str):
+        result["urgency"] = result["urgency"].lower()
 
     record_id = ai_record_service.save_report_explanation(
         user["sub"],
@@ -473,6 +495,10 @@ async def prescription_schedule(
         "- Thrice daily: ['08:00', '14:00', '20:00']\n"
         "- Four times daily: ['08:00', '12:00', '16:00', '20:00']\n"
     )
+    
+    # Add image analysis instruction if image is provided
+    if image_base64:
+        prompt += "\n\n**IMPORTANT: A prescription image has been provided. Please carefully read and extract all medicine names, dosages, frequencies (BD/TDS/QID), and durations from the prescription image. Create a complete medication schedule based on the visible prescription.**"
 
     fallback = {
         "medicines": [{

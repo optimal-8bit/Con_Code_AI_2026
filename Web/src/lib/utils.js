@@ -91,6 +91,23 @@ export function fileToBase64(file) {
 
 export function handleApiError(error) {
   if (error.response) {
+    // Handle FastAPI validation errors (422)
+    if (error.response.status === 422 && error.response.data?.detail) {
+      const detail = error.response.data.detail;
+      // If detail is an array of validation errors, format them
+      if (Array.isArray(detail)) {
+        const messages = detail.map(err => {
+          const field = err.loc?.join('.') || 'field';
+          return `${field}: ${err.msg}`;
+        });
+        return messages.join(', ');
+      }
+      // If detail is a string, return it
+      if (typeof detail === 'string') {
+        return detail;
+      }
+    }
+    // Handle other error responses
     return error.response.data?.detail || error.response.data?.message || 'An error occurred';
   } else if (error.request) {
     return 'No response from server. Please check your connection.';
