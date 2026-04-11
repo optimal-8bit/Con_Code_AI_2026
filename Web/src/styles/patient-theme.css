@@ -1,0 +1,77 @@
+/* Patient Dark Theme Overrides */
+/* This file automatically applies dark theme styling to all patient pages */
+
+/* Apply dark theme text colors globally for patient pages */
+[data-patient-theme="true"] .text-gray-900,
+[data-patient-theme="true"] h1,
+[data-patient-theme="true"] h2,
+[data-patient-theme="true"] h3,
+[data-patient-theme="true"] h4,
+[data-patient-theme="true"] h5,
+[data-patient-theme="true"] h6 {
+  color: #ffffff !important;
+}
+
+[data-patient-theme="true"] .text-gray-700,
+[data-patient-theme="true"] .text-gray-600 {
+  color: #d1d5db !important;
+}
+
+[data-patient-theme="true"] .text-gray-500 {
+  color: #9ca3af !important;
+}
+
+[data-patient-theme="true"] .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+/* Background overrides */
+[data-patient-theme="true"] .bg-gray-50 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-patient-theme="true"] .bg-gray-100 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-patient-theme="true"] .bg-white {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Border overrides */
+[data-patient-theme="true"] .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-patient-theme="true"] .border-gray-300 {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Input overrides */
+[data-patient-theme="true"] input:not([type="checkbox"]):not([type="radio"]),
+[data-patient-theme="true"] textarea,
+[data-patient-theme="true"] select {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+[data-patient-theme="true"] input::placeholder,
+[data-patient-theme="true"] textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Label overrides */
+[data-patient-theme="true"] label {
+  color: #d1d5db !important;
+}
+
+/* Button overrides for outline variant */
+[data-patient-theme="true"] button[class*="outline"] {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+[data-patient-theme="true"] button[class*="outline"]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}

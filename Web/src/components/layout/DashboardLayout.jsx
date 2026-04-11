@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
+import PatientLayout from './PatientLayout';
 import {
   LayoutDashboard,
   Calendar,
@@ -78,6 +79,11 @@ export default function DashboardLayout({ children }) {
 
   const navItems = getNavItems();
   const profilePath = `/${user?.role}/profile`;
+
+  // Use themed PatientLayout for patient users
+  if (user?.role === 'patient') {
+    return <PatientLayout>{children}</PatientLayout>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -53,14 +53,14 @@ const BorderGlow = ({
   className = '',
   edgeSensitivity = 30,
   glowColor = '40 80 80',
-  backgroundColor = 'rgba(6, 0, 16, 0.60)', // Decreased transparency (bolder background)
+  backgroundColor = 'rgba(10, 10, 20, 0.85)', // Much darker, almost black
   borderRadius = 28,
   glowRadius = 40,
   glowIntensity = 1.0,
-  coneSpread = 60, // Increased rainbow spread
+  coneSpread = 60,
   animated = false,
   colors = ['#c084fc', '#f472b6', '#38bdf8'],
-  fillOpacity = 0.9, // Increased rainbow internal brightness
+  fillOpacity = 0.9,
 }) => {
   const cardRef = useRef(null);
 

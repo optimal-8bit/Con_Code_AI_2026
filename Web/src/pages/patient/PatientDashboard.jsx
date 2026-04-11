@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PatientLayout from '@/components/layout/PatientLayout';
+import BorderGlow from '@/components/ui/BorderGlow';
 import { Button } from '@/components/ui/button';
 import { patientService } from '@/services/patient.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
@@ -38,203 +38,209 @@ export default function PatientDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <PatientLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
         </div>
-      </DashboardLayout>
+      </PatientLayout>
     );
   }
 
   if (error) {
     return (
-      <DashboardLayout>
+      <PatientLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-gray-600">{error}</p>
-            <Button onClick={loadDashboard} className="mt-4">
+            <AlertCircle className="h-12 w-12 text-rose-400 mx-auto mb-4" />
+            <p className="text-gray-300">{error}</p>
+            <Button onClick={loadDashboard} className="mt-4 bg-blue-500 hover:bg-blue-600">
               Retry
             </Button>
           </div>
         </div>
-      </DashboardLayout>
+      </PatientLayout>
     );
   }
 
   const metrics = dashboard?.metrics || {};
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <PatientLayout>
+      <div className="space-y-6 animate-in fade-in duration-500">
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="220 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Appointments</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.total_appointments || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Total Appointments</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.total_appointments || 0}</p>
                 </div>
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Calendar className="h-6 w-6 text-blue-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <Calendar className="h-6 w-6 text-blue-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="160 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Prescriptions</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.total_prescriptions || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Prescriptions</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.total_prescriptions || 0}</p>
                 </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <FileText className="h-6 w-6 text-green-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <FileText className="h-6 w-6 text-emerald-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="280 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Medications</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.active_medications || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Active Medications</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.active_medications || 0}</p>
                 </div>
-                <div className="p-3 bg-purple-100 rounded-full">
-                  <Pill className="h-6 w-6 text-purple-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <Pill className="h-6 w-6 text-purple-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="45 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Notifications</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.unread_notifications || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Notifications</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.unread_notifications || 0}</p>
                 </div>
-                <div className="p-3 bg-yellow-100 rounded-full">
-                  <Bell className="h-6 w-6 text-yellow-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <Bell className="h-6 w-6 text-yellow-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
         </div>
 
         {/* AI Health Summary */}
         {dashboard?.ai_health_summary && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
+          <BorderGlow glowColor="200 80 80" className="w-full">
+            <div className="p-6">
+              <h3 className="flex items-center gap-2 text-xl font-semibold text-white mb-4">
+                <Activity className="h-5 w-5 text-blue-400" />
                 AI Health Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 mb-4">{dashboard.ai_health_summary}</p>
+              </h3>
+              <p className="text-gray-300 leading-relaxed mb-4">{dashboard.ai_health_summary}</p>
               {dashboard.ai_recommendations && dashboard.ai_recommendations.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600">Recommendations:</p>
-                  <ul className="space-y-1">
+                <div className="space-y-2 mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                  <p className="text-sm font-medium text-blue-400 uppercase tracking-wider">Recommendations</p>
+                  <ul className="space-y-2">
                     {dashboard.ai_recommendations.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                        <TrendingUp className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-300">
+                        <TrendingUp className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
                         <span>{rec}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Upcoming Appointments */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Upcoming Appointments</CardTitle>
-              <Link to="/patient/appointments">
-                <Button variant="outline" size="sm">View All</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {dashboard?.upcoming_appointments && dashboard.upcoming_appointments.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboard.upcoming_appointments.map((appt) => (
-                    <div key={appt.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Clock className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm font-medium text-gray-900">
-                            {formatDateTime(appt.scheduled_at)}
-                          </span>
+          <BorderGlow glowColor="220 60 40">
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex flex-row items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-white">Upcoming Appointments</h3>
+                <Link to="/patient/appointments">
+                  <Button variant="outline" size="sm" className="bg-white/5 border-white/20 text-white hover:bg-white/20">View All</Button>
+                </Link>
+              </div>
+              <div className="flex-1">
+                {dashboard?.upcoming_appointments && dashboard.upcoming_appointments.length > 0 ? (
+                  <div className="space-y-3">
+                    {dashboard.upcoming_appointments.map((appt) => (
+                      <div key={appt.id} className="flex items-start justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Clock className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium text-white">
+                              {formatDateTime(appt.scheduled_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-300">{appt.reason || 'General Consultation'}</p>
                         </div>
-                        <p className="text-sm text-gray-600">{appt.reason || 'General Consultation'}</p>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appt.status)}`}>
+                          {appt.status}
+                        </span>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appt.status)}`}>
-                        {appt.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No upcoming appointments</p>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center p-8">
+                    <p className="text-gray-400">No upcoming appointments</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </BorderGlow>
 
           {/* Active Medications */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Active Medications</CardTitle>
-              <Link to="/patient/medications">
-                <Button variant="outline" size="sm">View All</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {dashboard?.active_medications && dashboard.active_medications.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboard.active_medications.slice(0, 5).map((med) => (
-                    <div key={med.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{med.medicine_name}</p>
-                        <p className="text-sm text-gray-600">{med.dosage} - {med.frequency}</p>
+          <BorderGlow glowColor="280 60 40">
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex flex-row items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-white">Active Medications</h3>
+                <Link to="/patient/medications">
+                  <Button variant="outline" size="sm" className="bg-white/5 border-white/20 text-white hover:bg-white/20">View All</Button>
+                </Link>
+              </div>
+              <div className="flex-1">
+                {dashboard?.active_medications && dashboard.active_medications.length > 0 ? (
+                  <div className="space-y-3">
+                    {dashboard.active_medications.slice(0, 5).map((med) => (
+                      <div key={med.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition">
+                        <div>
+                          <p className="font-medium text-white">{med.medicine_name}</p>
+                          <p className="text-sm text-gray-300">{med.dosage} - {med.frequency}</p>
+                        </div>
+                        <Pill className="h-5 w-5 text-purple-400" />
                       </div>
-                      <Pill className="h-5 w-5 text-purple-600" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No active medications</p>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center p-8">
+                    <p className="text-gray-400">No active medications</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </BorderGlow>
         </div>
 
         {/* Recent Prescriptions */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Prescriptions</CardTitle>
-            <Link to="/patient/prescriptions">
-              <Button variant="outline" size="sm">View All</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
+        <BorderGlow glowColor="160 60 40">
+          <div className="p-6">
+            <div className="flex flex-row items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Recent Prescriptions</h3>
+              <Link to="/patient/prescriptions">
+                <Button variant="outline" size="sm" className="bg-white/5 border-white/20 text-white hover:bg-white/20">View All</Button>
+              </Link>
+            </div>
             {dashboard?.recent_prescriptions && dashboard.recent_prescriptions.length > 0 ? (
               <div className="space-y-3">
                 {dashboard.recent_prescriptions.map((rx) => (
-                  <div key={rx.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={rx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-white">
                         {rx.medicines?.length || 0} medicine(s)
                       </p>
-                      <p className="text-sm text-gray-600">Issued: {formatDateTime(rx.issued_at)}</p>
+                      <p className="text-sm text-gray-300">Issued: {formatDateTime(rx.issued_at)}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(rx.status)}`}>
                       {rx.status}
@@ -243,11 +249,13 @@ export default function PatientDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">No prescriptions yet</p>
+              <div className="flex items-center justify-center p-8">
+                <p className="text-gray-400">No prescriptions yet</p>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </BorderGlow>
       </div>
-    </DashboardLayout>
+    </PatientLayout>
   );
 }
