@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 
+// Intro Page
+import IntroPage from '@/pages/intro_page';
+
 // Auth Pages
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
@@ -54,9 +57,9 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
 
 // Role-based Dashboard Redirect
 function DashboardRedirect() {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
 
   switch (user.role) {
     case 'patient':
@@ -75,11 +78,12 @@ export default function App() {
     <Router>
       <Routes>
         {/* Public Routes */}
+        <Route path="/" element={<IntroPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
         {/* Dashboard Redirect */}
-        <Route path="/" element={<DashboardRedirect />} />
+        <Route path="/dashboard" element={<DashboardRedirect />} />
 
         {/* Patient Routes */}
         <Route

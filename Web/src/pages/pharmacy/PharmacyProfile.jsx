@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PharmacyLayout from '@/components/layout/PharmacyLayout';
+import BorderGlow from '@/components/ui/BorderGlow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authService } from '@/services/auth.service';
@@ -34,69 +34,77 @@ export default function PharmacyProfile() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Pharmacy Profile</h2>
+    <PharmacyLayout>
+      <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
+        <div className="flex items-center gap-3 mb-6 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md">
+           <User className="h-6 w-6 text-emerald-400" />
+           <h2 className="text-2xl font-bold text-white">Pharmacy Profile</h2>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Business Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <BorderGlow glowColor="120 40 40">
+          <div className="p-6">
+            <h3 className="text-xl font-semibold text-white mb-6 border-b border-white/10 pb-4">Business Information</h3>
+            <form onSubmit={handleSubmit} className="space-y-5">
               {message && (
-                <div className={`p-3 rounded-lg text-sm ${
-                  message.includes('success') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                <div className={`p-4 rounded-xl border backdrop-blur-sm text-sm font-medium ${
+                  message.includes('success') 
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                    : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                 }`}>
                   {message}
                 </div>
               )}
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Pharmacy Name</label>
-                <div className="relative mt-1">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-300">Pharmacy Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="pl-10"
+                    className="pl-12 h-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 rounded-xl"
+                    placeholder="Enter pharmacy name"
                     required
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Email</label>
-                <div className="relative mt-1">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-300">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
                   <Input
                     value={user?.email || ''}
-                    className="pl-10 bg-gray-50"
+                    className="pl-12 h-12 bg-white/5 border-white/10 text-gray-400 cursor-not-allowed rounded-xl"
                     disabled
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Email address cannot be changed.</p>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Phone</label>
-                <div className="relative mt-1">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-300">Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="pl-10"
+                    className="pl-12 h-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 rounded-xl"
+                    placeholder="e.g., +1 (555) 000-0000"
                   />
                 </div>
               </div>
 
-              <Button type="submit" disabled={loading}>
-                <Save className="h-4 w-4 mr-2" />
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
+              <div className="pt-4 mt-6 border-t border-white/10 flex justify-end">
+                <Button type="submit" disabled={loading} className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 h-12 rounded-xl text-base w-full sm:w-auto">
+                  <Save className="h-5 w-5 mr-2" />
+                  {loading ? 'Saving Changes...' : 'Save Changes'}
+                </Button>
+              </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </BorderGlow>
       </div>
-    </DashboardLayout>
+    </PharmacyLayout>
   );
 }

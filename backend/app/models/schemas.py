@@ -3,25 +3,42 @@ Comprehensive Pydantic schemas for NextGen Health Platform.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any, Literal
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
-    email: EmailStr
+    email: str
     password: str = Field(..., min_length=6)
     role: Literal["patient", "doctor", "pharmacy"] = "patient"
     phone: str | None = None
     profile: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', v):
+            raise ValueError('Invalid email address')
+        return v.lower().strip()
+
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', v):
+            raise ValueError('Invalid email address')
+        return v.lower().strip()
+
+
 
 
 class TokenResponse(BaseModel):
