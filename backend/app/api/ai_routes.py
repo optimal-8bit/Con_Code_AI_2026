@@ -4,6 +4,7 @@ All support multimodal inputs (text + image base64 + file upload).
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Annotated
 
@@ -28,6 +29,8 @@ from app.models.schemas import (
 )
 from app.services.data_service import ai_record_service
 from app.services.file_service import file_service
+
+logger = logging.getLogger(__name__)
 from app.services.llm_service import llm_service
 
 ai_router = APIRouter()
@@ -339,68 +342,185 @@ async def report_explainer(
 # ─── Smart Health Chat ────────────────────────────────────────────────────────
 
 @ai_router.post("/smart-chat", response_model=SmartChatResponse)
-def smart_chat(payload: SmartChatRequest, user: dict = Depends(get_current_user)):
+async def smart_chat(payload: SmartChatRequest, user: dict = Depends(get_current_user)):
+    """
+    Unified Smart Health Chat - TRULY INTELLIGENT with real database integration.
+    - Real doctor recommendations with availability
+    - Real pharmacy matching with pricing
+    - Real appointment booking
+    - Context-aware responses
+    """
+    from app.services.smart_chat_service import smart_chat_service
+    
     session_id = payload.session_id or str(uuid.uuid4())
-
-    # Build context from chat history
-    history_text = "\n".join(
-        [f"{m.role.upper()}: {m.content}" for m in payload.chat_history[-8:]]
-    )
-
-    system_prompt = (
-        "You are NextGen Health's Smart Health Assistant — an empathetic, knowledgeable AI that helps "
-        "patients, doctors, and pharmacists understand medical information. "
-        "Use the provided medical context when available. "
-        "Always recommend consulting a healthcare professional for critical decisions. "
-        "Keep responses clear, accurate, and appropriately detailed. "
-        "Provide follow-up questions to help the user explore further."
-    )
-
-    user_prompt = ""
-    if payload.report_context:
-        user_prompt += f"Medical Report/Context:\n{payload.report_context}\n\n"
-    if payload.medical_history:
-        user_prompt += f"Patient Medical History:\n{payload.medical_history}\n\n"
-    if history_text:
-        user_prompt += f"Conversation History:\n{history_text}\n\n"
-    user_prompt += f"Current Question: {payload.question}\n\n"
-    user_prompt += (
-        "Respond with JSON: {\"answer\": \"...\", \"follow_up_questions\": [\"...\", \"...\"], "
-        "\"sources\": [\"...\"], \"disclaimer\": \"...\" or null}"
-    )
-
-    fallback = {
-        "answer": (
-            "I'd be happy to help, but I need more information. "
-            "Could you share your specific symptoms, medical report, or question in more detail?"
-        ),
-        "follow_up_questions": [
-            "Can you describe your symptoms in more detail?",
-            "How long have you been experiencing this?",
-            "Do you have any relevant medical history?",
-        ],
-        "sources": [],
-        "disclaimer": DISCLAIMER,
-    }
-
-    result = llm_service.invoke_json(system_prompt, user_prompt, fallback)
-
-    record_id = ai_record_service.save_chat(
-        user["sub"],
-        session_id,
-        payload.question,
-        result.get("answer", ""),
-        {"context_type": payload.context_type, "has_report": bool(payload.report_context)},
-    )
-
-    return SmartChatResponse(
-        answer=result.get("answer", fallback["answer"]),
-        session_id=session_id,
-        follow_up_questions=result.get("follow_up_questions", []),
-        sources=result.get("sources", []),
-        disclaimer=result.get("disclaimer", DISCLAIMER),
-        record_id=record_id,
-    )
+    user_id = user["sub"]
+    
+    try:
+        # Detect intent
+        intent, confidence = smart_chat_service.detect_intent(payload.question, has_file=bool(payload.report_context))
+        
+        logger.info(f"Detected intent: {intent} (confidence: {confidence})")
+        
+        # Get user context for personalized responses
+        user_context = smart_chat_service.get_user_context(user_id)
+        
+        # Build chat history
+        chat_history = [{"role": m.role, "content": m.content} for m in payload.chat_history[-8:]]
+        
+        # Generate intelligent response with real data
+        result = smart_chat_service.generate_smart_response(
+            intent=intent,
+            message=payload.question,
+            user_id=user_id,
+            user_context=user_context,
+            chat_history=chat_history,
+        )
+        
+        answer = result.get("response", "I'm here to help with your health needs.")
+        suggested_actions = result.get("suggested_actions", [])
+        
+        # Generate follow-up questions based on intent and data
+        follow_up_questions = []
+        if intent == "symptom_check":
+            doctors = result.get("doctors", [])
+            if doctors:
+                follow_up_questions = [
+                    f"Would you like to book with Dr. {doctors[0]['name']}?",
+                    "Do you have any other symptoms?",
+                    "How long have you been experiencing this?",
+                ]
+            else:
+                follow_up_questions = [
+                    "Would you like me to find a doctor for you?",
+                    "Do you have any other symptoms?",
+                ]
+        
+        elif intent == "appointment_booking":
+            doctors = result.get("doctors", [])
+            if doctors and doctors[0].get("available_dates"):
+                next_date = doctors[0]["available_dates"][0]
+                follow_up_questions = [
+                    f"Book with Dr. {doctors[0]['name']} on {next_date['date']}?",
+                    "Would you like to see more doctors?",
+                    "Do you have a preferred date?",
+                ]
+            else:
+                follow_up_questions = [
+                    "What type of specialist do you need?",
+                    "Do you have a preferred date?",
+                ]
+        
+        elif intent == "prescription_analysis":
+            medications = result.get("medications", [])
+            if medications:
+                follow_up_questions = [
+                    "Would you like to order these medicines?",
+                    "Should I set up medication reminders?",
+                    "Do you want to upload a new prescription?",
+                ]
+            else:
+                follow_up_questions = [
+                    "Would you like to upload your prescription?",
+                    "Do you need help finding a pharmacy?",
+                ]
+        
+        elif intent == "pharmacy_order":
+            pharmacies = result.get("pharmacies", [])
+            if pharmacies:
+                follow_up_questions = [
+                    f"Order from {pharmacies[0]['pharmacy_name']}?",
+                    "Would you like to compare more pharmacies?",
+                    "Do you need delivery?",
+                ]
+            else:
+                follow_up_questions = [
+                    "Would you like to upload your prescription?",
+                    "Which medicines do you need?",
+                ]
+        
+        elif intent == "report_analysis":
+            follow_up_questions = [
+                "Would you like to upload your report?",
+                "Do you have questions about specific values?",
+                "Should I recommend a specialist?",
+            ]
+        
+        else:
+            follow_up_questions = [
+                "Would you like to check symptoms?",
+                "Do you need to book an appointment?",
+                "Would you like to analyze a medical report?",
+            ]
+        
+        # Save chat record with metadata
+        record_id = ai_record_service.save_chat(
+            user_id,
+            session_id,
+            payload.question,
+            answer,
+            {
+                "context_type": intent,
+                "intent": intent,
+                "confidence": confidence,
+                "has_report": bool(payload.report_context),
+                "doctors_found": len(result.get("doctors", [])),
+                "pharmacies_found": len(result.get("pharmacies", [])),
+                "user_has_medications": len(user_context.get("active_medications", [])),
+            },
+        )
+        
+        # Build sources from suggested actions
+        sources = [f"action:{action['type']}" for action in suggested_actions]
+        
+        # Add metadata to sources for frontend
+        if result.get("doctors"):
+            sources.append(f"doctors:{len(result['doctors'])}")
+        if result.get("pharmacies"):
+            sources.append(f"pharmacies:{len(result['pharmacies'])}")
+        
+        return SmartChatResponse(
+            answer=answer,
+            session_id=session_id,
+            follow_up_questions=follow_up_questions,
+            sources=sources,
+            disclaimer=DISCLAIMER if intent != "general_chat" else None,
+            record_id=record_id,
+        )
+    
+    except Exception as e:
+        logger.error(f"Smart chat error: {e}", exc_info=True)
+        
+        # Fallback response
+        fallback_answer = (
+            "I'm here to help with your health needs! I can assist you with:\n\n"
+            "• **Symptom checking** with real doctor recommendations\n"
+            "• **Booking appointments** with available specialists\n"
+            "• **Analyzing medical reports** and explaining results\n"
+            "• **Processing prescriptions** and finding pharmacies\n"
+            "• **Ordering medicines** with price comparison\n\n"
+            "What would you like help with?"
+        )
+        
+        record_id = ai_record_service.save_chat(
+            user["sub"],
+            session_id,
+            payload.question,
+            fallback_answer,
+            {"error": str(e)},
+        )
+        
+        return SmartChatResponse(
+            answer=fallback_answer,
+            session_id=session_id,
+            follow_up_questions=[
+                "Check my symptoms",
+                "Find a doctor",
+                "Analyze my report",
+            ],
+            sources=[],
+            disclaimer=DISCLAIMER,
+            record_id=record_id,
+        )
 
 
 @ai_router.post("/smart-chat/stream")

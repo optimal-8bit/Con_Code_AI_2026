@@ -36,6 +36,7 @@ import SymptomChecker from '@/pages/ai/SymptomChecker';
 import PrescriptionAnalyzer from '@/pages/ai/PrescriptionAnalyzer';
 import ReportExplainer from '@/pages/ai/ReportExplainer';
 import SmartChat from '@/pages/ai/SmartChat';
+import UnifiedSmartChat from '@/pages/ai/UnifiedSmartChat';
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles = [] }) {
@@ -277,6 +278,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <SmartChat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai/smart-chat"
+          element={
+            <ProtectedRoute>
+              <UnifiedSmartChat />
             </ProtectedRoute>
           }
         />
