@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import PharmacyLayout from '@/components/layout/PharmacyLayout';
+import BorderGlow from '@/components/ui/BorderGlow';
 import { Button } from '@/components/ui/button';
 import { pharmacyService } from '@/services/pharmacy.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
@@ -36,60 +36,67 @@ export default function PharmacyPrescriptions() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <PharmacyLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400"></div>
         </div>
-      </DashboardLayout>
+      </PharmacyLayout>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Prescriptions</h2>
+    <PharmacyLayout>
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="flex items-center gap-3 mb-6 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md">
+           <FileText className="h-6 w-6 text-emerald-400" />
+           <h2 className="text-2xl font-bold text-white">Prescriptions</h2>
+        </div>
 
         <div className="grid gap-4">
           {prescriptions.length > 0 ? (
             prescriptions.map((rx) => (
-              <Card key={rx.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-4">
+              <BorderGlow key={rx.id} glowColor="180 40 40">
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4 border-b border-white/10 pb-4">
                     <div>
-                      <p className="text-sm text-gray-600">Issued: {formatDateTime(rx.issued_at)}</p>
-                      <p className="text-sm text-gray-600">Patient ID: {rx.patient_id}</p>
+                      <p className="font-medium text-white text-lg">Patient ID: <span className="text-emerald-400">{rx.patient_id}</span></p>
+                      <p className="text-sm text-gray-400 mt-1">Issued: {formatDateTime(rx.issued_at)}</p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(rx.status)}`}>
+                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(rx.status)}`}>
                       {rx.status}
                     </span>
                   </div>
-                  <div className="space-y-2 mb-4">
-                    <p className="font-medium text-gray-900">Medicines:</p>
+                  
+                  <div className="space-y-3 mb-6">
+                    <p className="font-medium text-emerald-400 uppercase tracking-wider text-sm mb-2">Medicines to Dispense</p>
                     {rx.medicines && rx.medicines.map((med, idx) => (
-                      <div key={idx} className="p-2 bg-gray-50 rounded text-sm">
-                        <p className="font-medium">{med.name}</p>
-                        <p className="text-gray-600">{med.dosage} - {med.frequency}</p>
+                      <div key={idx} className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition">
+                        <p className="font-medium text-white">{med.name}</p>
+                        <p className="text-sm text-gray-400 mt-1">{med.dosage} <span className="text-gray-600 mx-1">•</span> {med.frequency}</p>
                       </div>
                     ))}
                   </div>
-                  {rx.status !== 'dispensed' && (
-                    <Button size="sm" onClick={() => handleDispense(rx.id)}>
-                      Mark as Dispensed
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+                  
+                  <div className="flex justify-end pt-2 border-t border-white/10 mt-4">
+                    {rx.status !== 'dispensed' && (
+                      <Button onClick={() => handleDispense(rx.id)} className="bg-emerald-500 hover:bg-emerald-600 text-white w-full sm:w-auto mt-4">
+                        Mark as Dispensed
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </BorderGlow>
             ))
           ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No prescriptions to dispense</p>
-              </CardContent>
-            </Card>
+            <BorderGlow glowColor="0 0 50">
+              <div className="py-16 text-center">
+                <FileText className="h-16 w-16 text-white/20 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">No prescriptions to dispense</p>
+              </div>
+            </BorderGlow>
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </PharmacyLayout>
   );
 }

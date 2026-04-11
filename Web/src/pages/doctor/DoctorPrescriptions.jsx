@@ -143,11 +143,11 @@ export default function DoctorPrescriptions() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DoctorLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
         </div>
-      </DashboardLayout>
+      </DoctorLayout>
     );
   }
 
@@ -343,16 +343,16 @@ export default function DoctorPrescriptions() {
                       )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </BorderGlow>
             ))
           ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No prescriptions issued yet</p>
-              </CardContent>
-            </Card>
+            <BorderGlow glowColor="0 0 50">
+              <div className="py-16 text-center">
+                <FileText className="h-16 w-16 text-white/20 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">No prescriptions issued yet</p>
+              </div>
+            </BorderGlow>
           )}
         </div>
       </div>

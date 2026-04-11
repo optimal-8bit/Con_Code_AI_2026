@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PharmacyLayout from '@/components/layout/PharmacyLayout';
+import BorderGlow from '@/components/ui/BorderGlow';
 import { Button } from '@/components/ui/button';
 import { pharmacyService } from '@/services/pharmacy.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
-import { ShoppingBag, FileText, Package, AlertTriangle, DollarSign, Activity } from 'lucide-react';
+import { ShoppingBag, Package, AlertTriangle, DollarSign, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function PharmacyDashboard() {
@@ -28,161 +28,170 @@ export default function PharmacyDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <PharmacyLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400"></div>
         </div>
-      </DashboardLayout>
+      </PharmacyLayout>
     );
   }
 
   const metrics = dashboard?.metrics || {};
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <PharmacyLayout>
+      <div className="space-y-6 animate-in fade-in duration-500">
+        
+        {/* Top 4 Metrics Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="40 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.pending_orders || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Pending Orders</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.pending_orders || 0}</p>
                 </div>
-                <div className="p-3 bg-yellow-100 rounded-full">
-                  <ShoppingBag className="h-6 w-6 text-yellow-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <ShoppingBag className="h-6 w-6 text-emerald-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="120 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900">${metrics.total_revenue || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Total Revenue</p>
+                  <p className="text-3xl font-bold text-white mt-1">${metrics.total_revenue || 0}</p>
                 </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <DollarSign className="h-6 w-6 text-emerald-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="200 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Inventory Items</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.total_inventory_items || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Inventory Items</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.total_inventory_items || 0}</p>
                 </div>
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Package className="h-6 w-6 text-blue-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <Package className="h-6 w-6 text-emerald-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardContent className="pt-6">
+          <BorderGlow glowColor="0 80 80">
+            <div className="p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Low Stock Alerts</p>
-                  <p className="text-3xl font-bold text-gray-900">{metrics.low_stock_alerts || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Low Stock Alerts</p>
+                  <p className="text-3xl font-bold text-white mt-1">{metrics.low_stock_alerts || 0}</p>
                 </div>
-                <div className="p-3 bg-red-100 rounded-full">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                <div className="p-3 bg-white/5 rounded-full ring-1 ring-white/10">
+                  <AlertTriangle className="h-6 w-6 text-rose-400" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
         </div>
 
+        {/* AI Inventory Summary */}
         {dashboard?.ai_inventory_summary && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
+          <BorderGlow glowColor="280 80 80" className="w-full">
+            <div className="p-6">
+              <h3 className="flex items-center gap-2 text-xl font-semibold text-white mb-4">
+                <Activity className="h-5 w-5 text-emerald-400" />
                 AI Inventory Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 mb-4">{dashboard.ai_inventory_summary}</p>
+              </h3>
+              <p className="text-gray-300 leading-relaxed mb-4">{dashboard.ai_inventory_summary}</p>
               {dashboard.ai_recommendations && dashboard.ai_recommendations.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600">Recommendations:</p>
-                  <ul className="space-y-1">
+                <div className="space-y-2 mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                  <p className="text-sm font-medium text-emerald-400 uppercase tracking-wider">Recommendations</p>
+                  <ul className="space-y-2">
                     {dashboard.ai_recommendations.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                        <span className="text-blue-600">•</span>
+                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-300">
+                        <span className="text-emerald-400 mt-1">•</span>
                         <span>{rec}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </BorderGlow>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Pending Orders</CardTitle>
-              <Link to="/pharmacy/orders">
-                <Button variant="outline" size="sm">View All</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {dashboard?.pending_orders && dashboard.pending_orders.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboard.pending_orders.slice(0, 5).map((order) => (
-                    <div key={order.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">Order #{order.id.slice(0, 8)}</p>
-                        <p className="text-sm text-gray-600">{formatDateTime(order.created_at)}</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">${order.total}</p>
+          <BorderGlow glowColor="200 60 40">
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex flex-row items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-white">Pending Orders</h3>
+                <Link to="/pharmacy/orders">
+                  <Button variant="outline" size="sm" className="bg-white/5 border-white/20 text-white hover:bg-white/20">View All</Button>
+                </Link>
+              </div>
+              <div className="flex-1">
+                {dashboard?.pending_orders && dashboard.pending_orders.length > 0 ? (
+                  <div className="space-y-3">
+                    {dashboard.pending_orders.slice(0, 5).map((order) => (
+                      <div key={order.id} className="flex items-start justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-white">Order #{order.id.slice(0, 8)}</p>
+                          <p className="text-xs text-gray-400 mt-1">{formatDateTime(order.created_at)}</p>
+                          <p className="text-sm font-semibold text-emerald-400 mt-2">${order.total}</p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
+                          {order.status}
+                        </span>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No pending orders</p>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center p-8">
+                    <p className="text-gray-400">No pending orders</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </BorderGlow>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Low Stock Alerts</CardTitle>
-              <Link to="/pharmacy/inventory">
-                <Button variant="outline" size="sm">View All</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {dashboard?.low_stock_alerts && dashboard.low_stock_alerts.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboard.low_stock_alerts.slice(0, 5).map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{item.medicine_name}</p>
-                        <p className="text-sm text-gray-600">Stock: {item.quantity} {item.unit}</p>
+          <BorderGlow glowColor="0 60 40">
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex flex-row items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-white">Low Stock Alerts</h3>
+                <Link to="/pharmacy/inventory">
+                  <Button variant="outline" size="sm" className="bg-white/5 border-white/20 text-white hover:bg-white/20">View All</Button>
+                </Link>
+              </div>
+              <div className="flex-1">
+                {dashboard?.low_stock_alerts && dashboard.low_stock_alerts.length > 0 ? (
+                  <div className="space-y-3">
+                    {dashboard.low_stock_alerts.slice(0, 5).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl hover:bg-rose-500/20 transition">
+                        <div>
+                          <p className="font-medium text-white">{item.medicine_name}</p>
+                          <p className="text-xs text-gray-400 mt-1">Stock: <span className="text-rose-400 font-semibold">{item.quantity}</span> {item.unit}</p>
+                        </div>
+                        <AlertTriangle className="h-5 w-5 text-rose-400" />
                       </div>
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No low stock alerts</p>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center p-8">
+                     <p className="text-gray-400">No low stock alerts</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </BorderGlow>
         </div>
       </div>
-    </DashboardLayout>
+    </PharmacyLayout>
   );
 }
