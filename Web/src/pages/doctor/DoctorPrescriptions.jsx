@@ -343,16 +343,16 @@ export default function DoctorPrescriptions() {
                       )}
                     </div>
                   </div>
-                </div>
-              </BorderGlow>
+                </CardContent>
+              </Card>
             ))
           ) : (
-            <BorderGlow glowColor="0 0 50">
-              <div className="py-16 text-center">
-                <FileText className="h-16 w-16 text-white/20 mx-auto mb-4" />
-                <p className="text-gray-400 text-lg">No prescriptions issued yet</p>
-              </div>
-            </BorderGlow>
+            <Card>
+              <CardContent className="py-16 text-center">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg">No prescriptions issued yet</p>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
