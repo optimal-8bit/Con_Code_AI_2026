@@ -19,6 +19,7 @@ import PatientDoctors from '@/pages/patient/PatientDoctors';
 import PatientProfile from '@/pages/patient/PatientProfile';
 import MedicationSchedule from '@/pages/patient/MedicationSchedule';
 import PharmacyOrder from '@/pages/patient/PharmacyOrder';
+import CalorieTracker from '@/pages/patient/CalorieTracker';
 
 // Doctor Pages
 import DoctorDashboard from '@/pages/doctor/DoctorDashboard';
@@ -163,6 +164,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['patient']}>
               <PharmacyOrder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/patient/calorie-tracker"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <CalorieTracker />
             </ProtectedRoute>
           }
         />

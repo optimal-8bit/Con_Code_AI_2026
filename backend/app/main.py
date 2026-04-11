@@ -18,6 +18,7 @@ from app.api.doctor_routes import doctor_router
 from app.api.pharmacy_routes import pharmacy_router
 from app.api.ai_routes import ai_router
 from app.api.admin_routes import admin_router
+from app.api.calorie_routes import router as calorie_router
 from app.core.config import settings
 from app.db.mongo import mongo_service
 from app.services.llm_service import llm_service
@@ -50,6 +51,7 @@ app.include_router(doctor_router, prefix="/api/v1/doctor", tags=["Doctor"])
 app.include_router(pharmacy_router, prefix="/api/v1/pharmacy", tags=["Pharmacy"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI Features"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(calorie_router, prefix="/api/v1", tags=["Calorie Tracking"])
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 UPLOADS_DIR = os.path.join(BACKEND_ROOT, "uploads")

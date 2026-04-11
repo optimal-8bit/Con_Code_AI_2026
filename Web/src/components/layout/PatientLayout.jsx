@@ -44,6 +44,7 @@ export default function PatientLayout({ children }) {
     { label: 'Records', href: '/patient/records' },
     { label: 'Orders', href: '/patient/orders' },
     { label: 'Doctors', href: '/patient/doctors' },
+    { label: 'Calorie Tracker', href: '/patient/calorie-tracker' },
     { label: 'Profile', href: '/patient/profile' },
   ];
 
