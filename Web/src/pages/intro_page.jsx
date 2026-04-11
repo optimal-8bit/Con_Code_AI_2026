@@ -244,12 +244,12 @@ function FloatingLines({
 }) {
   const mountRef = useRef(null); // invisible anchor div
 
-  const targetMouseRef      = useRef(new Vector2(-1000, -1000));
-  const currentMouseRef     = useRef(new Vector2(-1000, -1000));
-  const targetInfluenceRef  = useRef(0);
+  const targetMouseRef = useRef(new Vector2(-1000, -1000));
+  const currentMouseRef = useRef(new Vector2(-1000, -1000));
+  const targetInfluenceRef = useRef(0);
   const currentInfluenceRef = useRef(0);
-  const targetParallaxRef   = useRef(new Vector2(0, 0));
-  const currentParallaxRef  = useRef(new Vector2(0, 0));
+  const targetParallaxRef = useRef(new Vector2(0, 0));
+  const currentParallaxRef = useRef(new Vector2(0, 0));
 
   const getLineCount = (wt) => {
     if (typeof lineCount === 'number') return lineCount;
@@ -262,23 +262,23 @@ function FloatingLines({
     return lineDistance[enabledWaves.indexOf(wt)] ?? 0.1;
   };
 
-  const topLC    = enabledWaves.includes('top')    ? getLineCount('top')    : 0;
-  const midLC    = enabledWaves.includes('middle') ? getLineCount('middle') : 0;
-  const botLC    = enabledWaves.includes('bottom') ? getLineCount('bottom') : 0;
-  const topLD    = enabledWaves.includes('top')    ? getLineDist('top')    * 0.01 : 0.01;
-  const midLD    = enabledWaves.includes('middle') ? getLineDist('middle') * 0.01 : 0.01;
-  const botLD    = enabledWaves.includes('bottom') ? getLineDist('bottom') * 0.01 : 0.01;
+  const topLC = enabledWaves.includes('top') ? getLineCount('top') : 0;
+  const midLC = enabledWaves.includes('middle') ? getLineCount('middle') : 0;
+  const botLC = enabledWaves.includes('bottom') ? getLineCount('bottom') : 0;
+  const topLD = enabledWaves.includes('top') ? getLineDist('top') * 0.01 : 0.01;
+  const midLD = enabledWaves.includes('middle') ? getLineDist('middle') * 0.01 : 0.01;
+  const botLD = enabledWaves.includes('bottom') ? getLineDist('bottom') * 0.01 : 0.01;
 
   useEffect(() => {
     let active = true;
 
     /* ── Three.js setup ── */
-    const scene  = new Scene();
+    const scene = new Scene();
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
     camera.position.z = 1;
 
     const renderer = new WebGLRenderer({ antialias: true, alpha: false });
-    const canvas   = renderer.domElement;
+    const canvas = renderer.domElement;
 
     /*
      * RESPONSIVE FIX:
@@ -286,12 +286,12 @@ function FloatingLines({
      * covers 100vw × 100vh at all times — no parent height issues.
      */
     Object.assign(canvas.style, {
-      position:   'fixed',
-      inset:      '0',
-      width:      '100vw',
-      height:     '100vh',
-      display:    'block',
-      zIndex:     '0',
+      position: 'fixed',
+      inset: '0',
+      width: '100vw',
+      height: '100vh',
+      display: 'block',
+      zIndex: '0',
       mixBlendMode,
       pointerEvents: interactive ? 'auto' : 'none',
     });
@@ -299,53 +299,53 @@ function FloatingLines({
 
     /* ── Uniforms ── */
     const uniforms = {
-      iTime:          { value: 0 },
-      iResolution:    { value: new Vector3(1, 1, 1) },
+      iTime: { value: 0 },
+      iResolution: { value: new Vector3(1, 1, 1) },
       animationSpeed: { value: animationSpeed },
 
-      enableTop:    { value: enabledWaves.includes('top') },
+      enableTop: { value: enabledWaves.includes('top') },
       enableMiddle: { value: enabledWaves.includes('middle') },
       enableBottom: { value: enabledWaves.includes('bottom') },
 
-      topLineCount:    { value: topLC },
+      topLineCount: { value: topLC },
       middleLineCount: { value: midLC },
       bottomLineCount: { value: botLC },
 
-      topLineDistance:    { value: topLD },
+      topLineDistance: { value: topLD },
       middleLineDistance: { value: midLD },
       bottomLineDistance: { value: botLD },
 
       topWavePosition: {
         value: new Vector3(
-          topWavePosition?.x      ?? 10.0,
-          topWavePosition?.y      ?? 0.5,
+          topWavePosition?.x ?? 10.0,
+          topWavePosition?.y ?? 0.5,
           topWavePosition?.rotate ?? -0.4,
         ),
       },
       middleWavePosition: {
         value: new Vector3(
-          middleWavePosition?.x      ?? 5.0,
-          middleWavePosition?.y      ?? 0.0,
+          middleWavePosition?.x ?? 5.0,
+          middleWavePosition?.y ?? 0.0,
           middleWavePosition?.rotate ?? 0.2,
         ),
       },
       bottomWavePosition: {
         value: new Vector3(
-          bottomWavePosition?.x      ?? 2.0,
-          bottomWavePosition?.y      ?? -0.7,
+          bottomWavePosition?.x ?? 2.0,
+          bottomWavePosition?.y ?? -0.7,
           bottomWavePosition?.rotate ?? 0.4,
         ),
       },
 
-      iMouse:        { value: new Vector2(-1000, -1000) },
-      interactive:   { value: interactive },
-      bendRadius:    { value: bendRadius },
-      bendStrength:  { value: bendStrength },
+      iMouse: { value: new Vector2(-1000, -1000) },
+      interactive: { value: interactive },
+      bendRadius: { value: bendRadius },
+      bendStrength: { value: bendStrength },
       bendInfluence: { value: 0 },
 
-      parallax:         { value: parallax },
+      parallax: { value: parallax },
       parallaxStrength: { value: parallaxStrength },
-      parallaxOffset:   { value: new Vector2(0, 0) },
+      parallaxOffset: { value: new Vector2(0, 0) },
 
       lineGradient: {
         value: Array.from({ length: MAX_GRADIENT_STOPS }, () => new Vector3(1, 1, 1)),
@@ -371,8 +371,8 @@ function FloatingLines({
     /* ── Resize: always use window dimensions ── */
     const setSize = () => {
       if (!active) return;
-      const w   = window.innerWidth;
-      const h   = window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       renderer.setPixelRatio(dpr);
@@ -392,23 +392,23 @@ function FloatingLines({
     /* ── Mouse / pointer interaction ── */
     const onPointerMove = (e) => {
       const dpr = renderer.getPixelRatio();
-      const x   = e.clientX;
-      const y   = e.clientY;
+      const x = e.clientX;
+      const y = e.clientY;
       targetMouseRef.current.set(x * dpr, (window.innerHeight - y) * dpr);
       targetInfluenceRef.current = 1.0;
       if (parallax) {
-        const cx = window.innerWidth  / 2;
+        const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 2;
         targetParallaxRef.current.set(
-          ((x - cx) / window.innerWidth)  *  parallaxStrength,
-          -((y - cy) / window.innerHeight) *  parallaxStrength,
+          ((x - cx) / window.innerWidth) * parallaxStrength,
+          -((y - cy) / window.innerHeight) * parallaxStrength,
         );
       }
     };
     const onPointerLeave = () => { targetInfluenceRef.current = 0.0; };
 
     if (interactive) {
-      window.addEventListener('pointermove',  onPointerMove);
+      window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerleave', onPointerLeave);
     }
 
@@ -422,7 +422,7 @@ function FloatingLines({
         currentMouseRef.current.lerp(targetMouseRef.current, mouseDamping);
         uniforms.iMouse.value.copy(currentMouseRef.current);
         currentInfluenceRef.current += (targetInfluenceRef.current - currentInfluenceRef.current) * mouseDamping;
-        uniforms.bendInfluence.value  = currentInfluenceRef.current;
+        uniforms.bendInfluence.value = currentInfluenceRef.current;
       }
 
       if (parallax) {
@@ -442,7 +442,7 @@ function FloatingLines({
       window.removeEventListener('resize', setSize);
       window.removeEventListener('orientationchange', setSize);
       if (interactive) {
-        window.removeEventListener('pointermove',  onPointerMove);
+        window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerleave', onPointerLeave);
       }
       geometry.dispose();
@@ -451,7 +451,7 @@ function FloatingLines({
       renderer.forceContextLoss();
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     linesGradient, enabledWaves, lineCount, lineDistance,
     topWavePosition, middleWavePosition, bottomWavePosition,
@@ -475,16 +475,16 @@ function SplitText({
   ease = 'power3.out',
   splitType = 'chars',
   from = { opacity: 0, y: 40 },
-  to   = { opacity: 1, y: 0 },
-  threshold  = 0.1,
+  to = { opacity: 1, y: 0 },
+  threshold = 0.1,
   rootMargin = '-100px',
-  textAlign  = 'center',
+  textAlign = 'center',
   tag = 'p',
   onLetterAnimationComplete,
 }) {
   const ref = useRef(null);
   const animationCompletedRef = useRef(false);
-  const onCompleteRef         = useRef(onLetterAnimationComplete);
+  const onCompleteRef = useRef(onLetterAnimationComplete);
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => { onCompleteRef.current = onLetterAnimationComplete; }, [onLetterAnimationComplete]);
@@ -501,23 +501,23 @@ function SplitText({
       const el = ref.current;
 
       if (el._rbsplitInstance) {
-        try { el._rbsplitInstance.revert(); } catch (_) {}
+        try { el._rbsplitInstance.revert(); } catch (_) { }
         el._rbsplitInstance = null;
       }
 
-      const startPct    = (1 - threshold) * 100;
+      const startPct = (1 - threshold) * 100;
       const marginMatch = /^(-?\d+(?:\.\d+)?)(px|em|rem|%)?$/.exec(rootMargin);
       const marginValue = marginMatch ? parseFloat(marginMatch[1]) : 0;
-      const marginUnit  = marginMatch ? (marginMatch[2] || 'px') : 'px';
+      const marginUnit = marginMatch ? (marginMatch[2] || 'px') : 'px';
       const sign =
         marginValue === 0 ? ''
-        : marginValue < 0 ? `-=${Math.abs(marginValue)}${marginUnit}`
-        :                   `+=${marginValue}${marginUnit}`;
+          : marginValue < 0 ? `-=${Math.abs(marginValue)}${marginUnit}`
+            : `+=${marginValue}${marginUnit}`;
       const start = `top ${startPct}%${sign}`;
 
       let targets;
       const assignTargets = (self) => {
-        if (splitType.includes('chars') && self.chars?.length)  targets = self.chars;
+        if (splitType.includes('chars') && self.chars?.length) targets = self.chars;
         if (!targets && splitType.includes('words') && self.words?.length) targets = self.words;
         if (!targets && splitType.includes('lines') && self.lines?.length) targets = self.lines;
         if (!targets) targets = self.chars || self.words || self.lines;
@@ -528,8 +528,8 @@ function SplitText({
         smartWrap: true,
         autoSplit: splitType === 'lines',
         linesClass: 'split-line',
-        wordsClass:  'split-word',
-        charsClass:  'split-char',
+        wordsClass: 'split-word',
+        charsClass: 'split-char',
         reduceWhiteSpace: false,
         onSplit: (self) => {
           assignTargets(self);
@@ -559,7 +559,7 @@ function SplitText({
 
       return () => {
         ScrollTrigger.getAll().forEach((st) => { if (st.trigger === el) st.kill(); });
-        try { splitInstance.revert(); } catch (_) {}
+        try { splitInstance.revert(); } catch (_) { }
         el._rbsplitInstance = null;
       };
     },
@@ -580,10 +580,10 @@ function SplitText({
       className={`split-parent ${className}`}
       style={{
         textAlign,
-        overflow:   'hidden',
-        display:    'inline-block',
+        overflow: 'hidden',
+        display: 'inline-block',
         whiteSpace: 'normal',
-        wordWrap:   'break-word',
+        wordWrap: 'break-word',
         willChange: 'transform, opacity',
       }}
     >
@@ -663,8 +663,27 @@ export default function IntroPage() {
           gap: 0;
         }
 
-        /* ── Company name ── */
+        /* ── Title ── */
         .company-name {
+          font-size: clamp(2.4rem, 6vw, 4rem);
+          font-weight: 700;
+          letter-spacing: -0.04em;
+          line-height: 1.1;
+          color: #ffffff;
+          display: block;
+          text-align: center;
+          margin-bottom: 2rem;
+          max-width: 800px;
+        }
+
+        .company-name .split-word,
+        .company-name .split-char {
+          display: inline-block;
+          color: #ffffff;
+        }
+
+        /* ── Brand Name ── */
+        .brand-name {
           font-size: clamp(2.6rem, 9vw, 6rem);
           font-weight: 800;
           letter-spacing: -0.03em;
@@ -677,9 +696,7 @@ export default function IntroPage() {
           text-align: center;
           margin-bottom: 0.9rem;
         }
-
-        /* Each animated split char must carry the gradient */
-        .company-name .split-char {
+        .brand-name .split-char {
           display: inline-block;
           background: linear-gradient(135deg, #e879f9 0%, #818cf8 48%, #38bdf8 100%);
           -webkit-background-clip: text;
@@ -698,34 +715,24 @@ export default function IntroPage() {
           margin-bottom: 2.75rem;
         }
 
-        /* ── Get Started label ── */
-        .get-started-label {
-          font-size: 0.7rem;
-          font-weight: 600;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: #475569;
-          margin-bottom: 0.875rem;
-        }
-
         /* ── Button row ── */
         .btn-row {
           display: flex;
           flex-direction: row;
-          gap: 0.75rem;
+          gap: 1rem;
           flex-wrap: wrap;
           justify-content: center;
         }
 
         /* Shared base */
         .btn {
-          padding: 0.7rem 2.25rem;
-          font-size: 0.9375rem;
+          padding: 0.875rem 2rem;
+          font-size: 1rem;
           font-weight: 500;
-          border-radius: 0.5rem;
+          border-radius: 9999px;
           cursor: pointer;
-          min-width: 130px;
-          letter-spacing: 0.01em;
+          min-width: 140px;
+          letter-spacing: -0.01em;
           font-family: inherit;
           outline: none;
           transition:
@@ -736,38 +743,53 @@ export default function IntroPage() {
             opacity       0.18s ease;
         }
 
+        /* White Button (Get Started) */
+        .btn-white {
+          background: #ffffff;
+          color: #0f172a;
+          border: 1px solid #ffffff;
+          font-weight: 600;
+        }
+        .btn-white:hover {
+          background: #f8fafc;
+          transform: scale(1.02);
+        }
+        .btn-white:active { transform: scale(0.97); }
+
         /* Ghost / outline */
         .btn-ghost {
-          background: rgba(255,255,255,0.06);
+          background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.2);
-          color: #f1f5f9;
+          color: #e2e8f0;
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
         }
         .btn-ghost:hover {
-          background: rgba(255,255,255,0.14);
-          border-color: rgba(255,255,255,0.4);
-          transform: scale(1.04);
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.3);
+          color: #ffffff;
+          transform: scale(1.02);
         }
         .btn-ghost:active { transform: scale(0.97); }
-
-        /* Filled gradient */
-        .btn-primary {
-          background: linear-gradient(135deg, #a855f7, #6366f1);
-          border: 1px solid transparent;
-          color: #fff;
-        }
-        .btn-primary:hover {
-          opacity: 0.87;
-          transform: scale(1.04);
-          box-shadow: 0 6px 28px rgba(168,85,247,0.52);
-        }
-        .btn-primary:active { transform: scale(0.97); }
 
         /* Mobile: stack buttons full-width */
         @media (max-width: 480px) {
           .btn-row { flex-direction: column; align-items: center; width: 100%; }
           .btn { width: 100%; max-width: 260px; }
+        }
+
+        /* ── Footer ── */
+        .intro-footer {
+          position: absolute;
+          bottom: 1.5rem;
+          left: 0;
+          width: 100%;
+          text-align: center;
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.4);
+          letter-spacing: 0.05em;
+          z-index: 20;
+          pointer-events: none;
         }
       `}</style>
 
@@ -797,11 +819,11 @@ export default function IntroPage() {
           className="intro-content"
           style={{ opacity: 0 }}
         >
-          {/* Company name — char-by-char animation */}
+          {/* Company name */}
           <SplitText
-            text="Luminary"
-            tag="h1"
-            className="company-name"
+            text="Company Name"
+            tag="h2"
+            className="brand-name"
             splitType="chars"
             delay={50}
             duration={1.25}
@@ -813,12 +835,12 @@ export default function IntroPage() {
             textAlign="center"
           />
 
-          {/* Tagline — word-by-word animation */}
+          {/* Tagline */}
           <SplitText
             text="Design systems that move at the speed of thought."
             tag="p"
             className="tagline-text"
-            splitType="words"
+            splitType="lines"
             delay={35}
             duration={1.0}
             ease="power2.out"
@@ -829,18 +851,36 @@ export default function IntroPage() {
             textAlign="center"
           />
 
-          {/* CTA label */}
-          <p className="get-started-label">Get Started</p>
+          {/* Title — word-by-word form */}
+          <SplitText
+            text="Get Started!"
+            tag="h1"
+            className="company-name"
+            splitType="words"
+            delay={50}
+            duration={1.25}
+            ease="power3.out"
+            from={{ opacity: 0, y: 45 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.1}
+            rootMargin="0px"
+            textAlign="center"
+          />
 
           {/* Action buttons */}
           <div className="btn-row">
-            <button className="btn btn-ghost" onClick={() => alert('Login')}>
-              Login
+            <button className="btn btn-white" onClick={() => alert('Get Started')}>
+              LOGIN
             </button>
-            <button className="btn btn-primary" onClick={() => alert('Register')}>
-              Register
+            <button className="btn btn-ghost" onClick={() => alert('Learn More')}>
+              SIGN UP
             </button>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="intro-footer">
+          Developed by team OPTIMALS
         </div>
       </div>
     </>
