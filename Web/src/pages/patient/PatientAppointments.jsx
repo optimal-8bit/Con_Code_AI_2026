@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +9,10 @@ import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
 import { Calendar, Plus, Search, Clock, MapPin, User, X } from 'lucide-react';
 
 export default function PatientAppointments() {
+  const location = useLocation();
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
+  const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBooking, setShowBooking] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,7 +24,34 @@ export default function PatientAppointments() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    // Check if we should open booking form from navigation state
+    if (location.state?.openBooking) {
+      setShowBooking(true);
+      
+      // Pre-fill form data from navigation state
+      const newFormData = { ...formData };
+      if (location.state.reason) {
+        newFormData.reason = location.state.reason;
+      }
+      if (location.state.selectedDoctorId) {
+        newFormData.doctor_id = location.state.selectedDoctorId;
+      }
+      setFormData(newFormData);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    // Filter doctors by specialty if specified, but only if no specific doctor is selected
+    if (location.state?.filterSpecialty && !location.state?.selectedDoctorId && doctors.length > 0) {
+      const filtered = doctors.filter(doc => 
+        doc.profile?.specialty === location.state.filterSpecialty
+      );
+      setFilteredDoctors(filtered);
+    } else {
+      setFilteredDoctors(doctors);
+    }
+  }, [doctors, location.state?.filterSpecialty, location.state?.selectedDoctorId]);
 
   const loadData = async () => {
     try {
@@ -44,6 +74,12 @@ export default function PatientAppointments() {
       await patientService.bookAppointment(formData);
       setShowBooking(false);
       setFormData({ doctor_id: '', scheduled_at: '', reason: '', notes: '' });
+      
+      // Clear navigation state after successful booking
+      if (location.state) {
+        window.history.replaceState({}, document.title);
+      }
+      
       loadData();
     } catch (err) {
       alert(handleApiError(err));
@@ -93,6 +129,30 @@ export default function PatientAppointments() {
               <form onSubmit={handleBookAppointment} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Select Doctor</label>
+                  {location.state?.selectedDoctorId && (
+                    <p className="text-xs text-green-600 mb-1">
+                      Doctor pre-selected from symptom analysis
+                    </p>
+                  )}
+                  {location.state?.filterSpecialty && !location.state?.selectedDoctorId && (
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-blue-600">
+                        Showing {location.state.filterSpecialty} specialists (recommended for your symptoms)
+                      </p>
+                      <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setFilteredDoctors(doctors);
+                          window.history.replaceState({}, document.title);
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        Show All Doctors
+                      </Button>
+                    </div>
+                  )}
                   <select
                     value={formData.doctor_id}
                     onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
@@ -100,12 +160,34 @@ export default function PatientAppointments() {
                     required
                   >
                     <option value="">Choose a doctor</option>
-                    {doctors.map((doc) => (
+                    {filteredDoctors.map((doc) => (
                       <option key={doc.id} value={doc.id}>
                         {doc.name} {doc.profile?.specialty ? `- ${doc.profile.specialty}` : ''}
+                        {doc.profile?.consultation_fee ? ` ($${doc.profile.consultation_fee})` : ''}
                       </option>
                     ))}
                   </select>
+                  {location.state?.filterSpecialty && filteredDoctors.length === 0 && doctors.length > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      No {location.state.filterSpecialty} specialists found. Showing all doctors below:
+                    </p>
+                  )}
+                  {location.state?.filterSpecialty && filteredDoctors.length === 0 && (
+                    <select
+                      value={formData.doctor_id}
+                      onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg"
+                      required
+                    >
+                      <option value="">Choose any doctor</option>
+                      {doctors.map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                          {doc.name} {doc.profile?.specialty ? `- ${doc.profile.specialty}` : ''}
+                          {doc.profile?.consultation_fee ? ` ($${doc.profile.consultation_fee})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Date & Time</label>
