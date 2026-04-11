@@ -53,14 +53,12 @@ export default function PharmacyOrder() {
       const orderData = {
         pharmacy_id: pharmacy.pharmacy_id,
         medicines: pharmacy.available_medicines.filter(m => m.available).map(m => ({
-          name: m.name,
+          medicine_name: m.name,  // Backend expects medicine_name, not name
           quantity: m.quantity,
           price_per_unit: m.price_per_unit,
-          inventory_id: m.inventory_id,
+          inventory_item_id: m.inventory_id,  // Backend expects inventory_item_id
         })),
-        total: pharmacy.total_price,
         delivery_address: 'Patient Address', // TODO: Get from user profile
-        payment_method: 'stripe',
       };
 
       const newOrder = await patientService.createOrder(orderData);

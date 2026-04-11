@@ -90,7 +90,8 @@ export const patientService = {
   },
 
   async matchPharmacies(medicines) {
-    const response = await apiClient.post('/patient/match-pharmacies', { medicines });
+    // Backend expects array directly, not wrapped in object
+    const response = await apiClient.post('/patient/match-pharmacies', medicines);
     return response.data;
   },
 
