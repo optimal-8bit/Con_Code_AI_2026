@@ -1,3 +1,12 @@
+/**
+ * IntroPage.jsx
+ * Single-file landing page.
+ * Includes FloatingLines (WebGL) + SplitText (GSAP) inline.
+ *
+ * Dependencies:
+ *   npm install three gsap @gsap/react
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import {
   Clock,
@@ -8,7 +17,7 @@ import {
   ShaderMaterial,
   Vector2,
   Vector3,
-  WebGLRenderer
+  WebGLRenderer,
 } from 'three';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -17,12 +26,13 @@ import { useGSAP } from '@gsap/react';
 
 gsap.registerPlugin(ScrollTrigger, GSAPSplitText, useGSAP);
 
-// ─────────────────────────────────────────────
-// Shaders
-// ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
+   GLSL shaders (verbatim from original FloatingLines source)
+───────────────────────────────────────────────────────────── */
 
 const vertexShader = `
 precision highp float;
+
 void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
@@ -82,7 +92,9 @@ vec3 background_color(vec2 uv) {
 }
 
 vec3 getLineColor(float t, vec3 baseColor) {
-  if (lineGradientCount <= 0) return baseColor;
+  if (lineGradientCount <= 0) {
+    return baseColor;
+  }
   vec3 gradientColor;
   if (lineGradientCount == 1) {
     gradientColor = lineGradient[0];
@@ -101,12 +113,15 @@ vec3 getLineColor(float t, vec3 baseColor) {
 
 float wave(vec2 uv, float offset, vec2 screenUv, vec2 mouseUv, bool shouldBend) {
   float time = iTime * animationSpeed;
-  float amp  = sin(offset + time * 0.2) * 0.3;
-  float y    = sin(uv.x + offset + time * 0.1) * amp;
+  float x_offset   = offset;
+  float x_movement = time * 0.1;
+  float amp        = sin(offset + time * 0.2) * 0.3;
+  float y          = sin(uv.x + x_offset + x_movement) * amp;
   if (shouldBend) {
     vec2 d = screenUv - mouseUv;
     float influence = exp(-dot(d, d) * bendRadius);
-    y += (mouseUv.y - screenUv.y) * influence * bendStrength * bendInfluence;
+    float bendOffset = (mouseUv.y - screenUv.y) * influence * bendStrength * bendInfluence;
+    y += bendOffset;
   }
   float m = uv.y - y;
   return 0.0175 / max(abs(m) + 0.01, 1e-3) + 0.01;
@@ -115,7 +130,9 @@ float wave(vec2 uv, float offset, vec2 screenUv, vec2 mouseUv, bool shouldBend) 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec2 baseUv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
   baseUv.y *= -1.0;
-  if (parallax) baseUv += parallaxOffset;
+  if (parallax) {
+    baseUv += parallaxOffset;
+  }
 
   vec3 col = vec3(0.0);
   vec3 b = lineGradientCount > 0 ? vec3(0.0) : background_color(baseUv);
@@ -179,6 +196,10 @@ void main() {
 }
 `;
 
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────────────────────── */
+
 const MAX_GRADIENT_STOPS = 8;
 
 function hexToVec3(hex) {
@@ -196,9 +217,13 @@ function hexToVec3(hex) {
   return new Vector3(r / 255, g / 255, b / 255);
 }
 
-// ─────────────────────────────────────────────
-// FloatingLines — responsive WebGL background
-// ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
+   FloatingLines
+   Key responsive fix: the canvas is appended to document.body
+   and positioned fixed so it always covers the full viewport
+   regardless of parent DOM structure. ResizeObserver +
+   window resize both call setSize().
+───────────────────────────────────────────────────────────── */
 
 function FloatingLines({
   linesGradient,
@@ -217,7 +242,8 @@ function FloatingLines({
   parallaxStrength = 0.2,
   mixBlendMode = 'screen',
 }) {
-  const containerRef        = useRef(null);
+  const mountRef = useRef(null); // invisible anchor div
+
   const targetMouseRef      = useRef(new Vector2(-1000, -1000));
   const currentMouseRef     = useRef(new Vector2(-1000, -1000));
   const targetInfluenceRef  = useRef(0);
@@ -225,31 +251,28 @@ function FloatingLines({
   const targetParallaxRef   = useRef(new Vector2(0, 0));
   const currentParallaxRef  = useRef(new Vector2(0, 0));
 
-  const getLineCount = (waveType) => {
+  const getLineCount = (wt) => {
     if (typeof lineCount === 'number') return lineCount;
-    if (!enabledWaves.includes(waveType)) return 0;
-    return lineCount[enabledWaves.indexOf(waveType)] ?? 6;
+    if (!enabledWaves.includes(wt)) return 0;
+    return lineCount[enabledWaves.indexOf(wt)] ?? 6;
   };
-
-  const getLineDistance = (waveType) => {
+  const getLineDist = (wt) => {
     if (typeof lineDistance === 'number') return lineDistance;
-    if (!enabledWaves.includes(waveType)) return 0.1;
-    return lineDistance[enabledWaves.indexOf(waveType)] ?? 0.1;
+    if (!enabledWaves.includes(wt)) return 0.1;
+    return lineDistance[enabledWaves.indexOf(wt)] ?? 0.1;
   };
 
-  const topLineCount       = enabledWaves.includes('top')    ? getLineCount('top')       : 0;
-  const middleLineCount    = enabledWaves.includes('middle') ? getLineCount('middle')    : 0;
-  const bottomLineCount    = enabledWaves.includes('bottom') ? getLineCount('bottom')    : 0;
-  const topLineDistance    = enabledWaves.includes('top')    ? getLineDistance('top')    * 0.01 : 0.01;
-  const middleLineDistance = enabledWaves.includes('middle') ? getLineDistance('middle') * 0.01 : 0.01;
-  const bottomLineDistance = enabledWaves.includes('bottom') ? getLineDistance('bottom') * 0.01 : 0.01;
+  const topLC    = enabledWaves.includes('top')    ? getLineCount('top')    : 0;
+  const midLC    = enabledWaves.includes('middle') ? getLineCount('middle') : 0;
+  const botLC    = enabledWaves.includes('bottom') ? getLineCount('bottom') : 0;
+  const topLD    = enabledWaves.includes('top')    ? getLineDist('top')    * 0.01 : 0.01;
+  const midLD    = enabledWaves.includes('middle') ? getLineDist('middle') * 0.01 : 0.01;
+  const botLD    = enabledWaves.includes('bottom') ? getLineDist('bottom') * 0.01 : 0.01;
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
     let active = true;
 
+    /* ── Three.js setup ── */
     const scene  = new Scene();
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
     camera.position.z = 1;
@@ -257,15 +280,24 @@ function FloatingLines({
     const renderer = new WebGLRenderer({ antialias: true, alpha: false });
     const canvas   = renderer.domElement;
 
-    // Canvas covers the entire container via CSS
-    canvas.style.position = 'absolute';
-    canvas.style.top      = '0';
-    canvas.style.left     = '0';
-    canvas.style.width    = '100%';
-    canvas.style.height   = '100%';
-    canvas.style.display  = 'block';
-    container.appendChild(canvas);
+    /*
+     * RESPONSIVE FIX:
+     * Attach canvas directly to <body> with position:fixed so it truly
+     * covers 100vw × 100vh at all times — no parent height issues.
+     */
+    Object.assign(canvas.style, {
+      position:   'fixed',
+      inset:      '0',
+      width:      '100vw',
+      height:     '100vh',
+      display:    'block',
+      zIndex:     '0',
+      mixBlendMode,
+      pointerEvents: interactive ? 'auto' : 'none',
+    });
+    document.body.appendChild(canvas);
 
+    /* ── Uniforms ── */
     const uniforms = {
       iTime:          { value: 0 },
       iResolution:    { value: new Vector3(1, 1, 1) },
@@ -275,33 +307,33 @@ function FloatingLines({
       enableMiddle: { value: enabledWaves.includes('middle') },
       enableBottom: { value: enabledWaves.includes('bottom') },
 
-      topLineCount:    { value: topLineCount },
-      middleLineCount: { value: middleLineCount },
-      bottomLineCount: { value: bottomLineCount },
+      topLineCount:    { value: topLC },
+      middleLineCount: { value: midLC },
+      bottomLineCount: { value: botLC },
 
-      topLineDistance:    { value: topLineDistance },
-      middleLineDistance: { value: middleLineDistance },
-      bottomLineDistance: { value: bottomLineDistance },
+      topLineDistance:    { value: topLD },
+      middleLineDistance: { value: midLD },
+      bottomLineDistance: { value: botLD },
 
       topWavePosition: {
         value: new Vector3(
           topWavePosition?.x      ?? 10.0,
           topWavePosition?.y      ?? 0.5,
-          topWavePosition?.rotate ?? -0.4
+          topWavePosition?.rotate ?? -0.4,
         ),
       },
       middleWavePosition: {
         value: new Vector3(
           middleWavePosition?.x      ?? 5.0,
           middleWavePosition?.y      ?? 0.0,
-          middleWavePosition?.rotate ?? 0.2
+          middleWavePosition?.rotate ?? 0.2,
         ),
       },
       bottomWavePosition: {
         value: new Vector3(
           bottomWavePosition?.x      ?? 2.0,
           bottomWavePosition?.y      ?? -0.7,
-          bottomWavePosition?.rotate ?? 0.4
+          bottomWavePosition?.rotate ?? 0.4,
         ),
       },
 
@@ -315,11 +347,13 @@ function FloatingLines({
       parallaxStrength: { value: parallaxStrength },
       parallaxOffset:   { value: new Vector2(0, 0) },
 
-      lineGradient:      { value: Array.from({ length: MAX_GRADIENT_STOPS }, () => new Vector3(1, 1, 1)) },
+      lineGradient: {
+        value: Array.from({ length: MAX_GRADIENT_STOPS }, () => new Vector3(1, 1, 1)),
+      },
       lineGradientCount: { value: 0 },
     };
 
-    if (linesGradient && linesGradient.length > 0) {
+    if (linesGradient?.length > 0) {
       const stops = linesGradient.slice(0, MAX_GRADIENT_STOPS);
       uniforms.lineGradientCount.value = stops.length;
       stops.forEach((hex, i) => {
@@ -334,54 +368,51 @@ function FloatingLines({
 
     const clock = new Clock();
 
-    // ── Responsive resize: read container's actual pixel size ──
+    /* ── Resize: always use window dimensions ── */
     const setSize = () => {
       if (!active) return;
-      const w   = container.clientWidth  || window.innerWidth;
-      const h   = container.clientHeight || window.innerHeight;
+      const w   = window.innerWidth;
+      const h   = window.innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       renderer.setPixelRatio(dpr);
-      // Pass false so Three.js does NOT set canvas CSS width/height
-      // (we already control that via position:absolute + 100%/100%)
-      renderer.setSize(w, h, false);
+      renderer.setSize(w, h, false); // false = don't touch CSS (we use 100vw/100vh)
 
       uniforms.iResolution.value.set(w * dpr, h * dpr, 1);
     };
 
     setSize();
+    window.addEventListener('resize', setSize);
 
-    // ResizeObserver on the container keeps the canvas in sync on any resize
-    const ro = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => { if (active) setSize(); })
-      : null;
-    if (ro) ro.observe(container);
+    /* Also watch orientation change for mobile */
+    window.addEventListener('orientationchange', () => {
+      setTimeout(setSize, 100); // slight delay so browser finishes layout
+    });
 
-    // Window resize as additional fallback
-    const onWinResize = () => { if (active) setSize(); };
-    window.addEventListener('resize', onWinResize);
-
+    /* ── Mouse / pointer interaction ── */
     const onPointerMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr  = renderer.getPixelRatio();
-      const x    = e.clientX - rect.left;
-      const y    = e.clientY - rect.top;
-      targetMouseRef.current.set(x * dpr, (rect.height - y) * dpr);
+      const dpr = renderer.getPixelRatio();
+      const x   = e.clientX;
+      const y   = e.clientY;
+      targetMouseRef.current.set(x * dpr, (window.innerHeight - y) * dpr);
       targetInfluenceRef.current = 1.0;
       if (parallax) {
+        const cx = window.innerWidth  / 2;
+        const cy = window.innerHeight / 2;
         targetParallaxRef.current.set(
-          ((x - rect.width  / 2) / rect.width)  *  parallaxStrength,
-          -((y - rect.height / 2) / rect.height) *  parallaxStrength
+          ((x - cx) / window.innerWidth)  *  parallaxStrength,
+          -((y - cy) / window.innerHeight) *  parallaxStrength,
         );
       }
     };
     const onPointerLeave = () => { targetInfluenceRef.current = 0.0; };
 
     if (interactive) {
-      canvas.addEventListener('pointermove',  onPointerMove);
-      canvas.addEventListener('pointerleave', onPointerLeave);
+      window.addEventListener('pointermove',  onPointerMove);
+      window.addEventListener('pointerleave', onPointerLeave);
     }
 
+    /* ── Render loop ── */
     let raf = 0;
     const loop = () => {
       if (!active) return;
@@ -404,48 +435,37 @@ function FloatingLines({
     };
     loop();
 
+    /* ── Cleanup ── */
     return () => {
       active = false;
       cancelAnimationFrame(raf);
-      if (ro) ro.disconnect();
-      window.removeEventListener('resize', onWinResize);
+      window.removeEventListener('resize', setSize);
+      window.removeEventListener('orientationchange', setSize);
       if (interactive) {
-        canvas.removeEventListener('pointermove',  onPointerMove);
-        canvas.removeEventListener('pointerleave', onPointerLeave);
+        window.removeEventListener('pointermove',  onPointerMove);
+        window.removeEventListener('pointerleave', onPointerLeave);
       }
       geometry.dispose();
       material.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
-      canvas.parentElement?.removeChild(canvas);
+      if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     linesGradient, enabledWaves, lineCount, lineDistance,
     topWavePosition, middleWavePosition, bottomWavePosition,
     animationSpeed, interactive, bendRadius, bendStrength,
-    mouseDamping, parallax, parallaxStrength,
+    mouseDamping, parallax, parallaxStrength, mixBlendMode,
   ]);
 
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        // Must be positioned so absolute canvas child fills it correctly
-        position:   'absolute',
-        inset:      0,
-        width:      '100%',
-        height:     '100%',
-        overflow:   'hidden',
-        mixBlendMode,
-      }}
-    />
-  );
+  /* Invisible anchor — the canvas lives on body, not here */
+  return <div ref={mountRef} style={{ display: 'none' }} />;
 }
 
-// ─────────────────────────────────────────────
-// SplitText — exactly as given
-// ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
+   SplitText (verbatim from original source)
+───────────────────────────────────────────────────────────── */
 
 function SplitText({
   text,
@@ -474,81 +494,84 @@ function SplitText({
     else document.fonts.ready.then(() => setFontsLoaded(true));
   }, []);
 
-  useGSAP(() => {
-    if (!ref.current || !text || !fontsLoaded) return;
-    if (animationCompletedRef.current) return;
-    const el = ref.current;
+  useGSAP(
+    () => {
+      if (!ref.current || !text || !fontsLoaded) return;
+      if (animationCompletedRef.current) return;
+      const el = ref.current;
 
-    if (el._rbsplitInstance) {
-      try { el._rbsplitInstance.revert(); } catch (_) {}
-      el._rbsplitInstance = null;
-    }
+      if (el._rbsplitInstance) {
+        try { el._rbsplitInstance.revert(); } catch (_) {}
+        el._rbsplitInstance = null;
+      }
 
-    const startPct    = (1 - threshold) * 100;
-    const marginMatch = /^(-?\d+(?:\.\d+)?)(px|em|rem|%)?$/.exec(rootMargin);
-    const marginValue = marginMatch ? parseFloat(marginMatch[1]) : 0;
-    const marginUnit  = marginMatch ? (marginMatch[2] || 'px') : 'px';
-    const sign =
-      marginValue === 0 ? ''
-      : marginValue < 0 ? `-=${Math.abs(marginValue)}${marginUnit}`
-      :                   `+=${marginValue}${marginUnit}`;
-    const start = `top ${startPct}%${sign}`;
+      const startPct    = (1 - threshold) * 100;
+      const marginMatch = /^(-?\d+(?:\.\d+)?)(px|em|rem|%)?$/.exec(rootMargin);
+      const marginValue = marginMatch ? parseFloat(marginMatch[1]) : 0;
+      const marginUnit  = marginMatch ? (marginMatch[2] || 'px') : 'px';
+      const sign =
+        marginValue === 0 ? ''
+        : marginValue < 0 ? `-=${Math.abs(marginValue)}${marginUnit}`
+        :                   `+=${marginValue}${marginUnit}`;
+      const start = `top ${startPct}%${sign}`;
 
-    let targets;
-    const assignTargets = (self) => {
-      if (splitType.includes('chars') && self.chars?.length)  targets = self.chars;
-      if (!targets && splitType.includes('words') && self.words?.length) targets = self.words;
-      if (!targets && splitType.includes('lines') && self.lines?.length) targets = self.lines;
-      if (!targets) targets = self.chars || self.words || self.lines;
-    };
+      let targets;
+      const assignTargets = (self) => {
+        if (splitType.includes('chars') && self.chars?.length)  targets = self.chars;
+        if (!targets && splitType.includes('words') && self.words?.length) targets = self.words;
+        if (!targets && splitType.includes('lines') && self.lines?.length) targets = self.lines;
+        if (!targets) targets = self.chars || self.words || self.lines;
+      };
 
-    const splitInstance = new GSAPSplitText(el, {
-      type: splitType,
-      smartWrap: true,
-      autoSplit: splitType === 'lines',
-      linesClass: 'split-line',
-      wordsClass:  'split-word',
-      charsClass:  'split-char',
-      reduceWhiteSpace: false,
-      onSplit: (self) => {
-        assignTargets(self);
-        return gsap.fromTo(targets, { ...from }, {
-          ...to,
-          duration,
-          ease,
-          stagger: delay / 1000,
-          scrollTrigger: {
-            trigger: el,
-            start,
-            once: true,
-            fastScrollEnd: true,
-            anticipatePin: 0.4,
-          },
-          onComplete: () => {
-            animationCompletedRef.current = true;
-            onCompleteRef.current?.();
-          },
-          willChange: 'transform, opacity',
-          force3D: true,
-        });
-      },
-    });
+      const splitInstance = new GSAPSplitText(el, {
+        type: splitType,
+        smartWrap: true,
+        autoSplit: splitType === 'lines',
+        linesClass: 'split-line',
+        wordsClass:  'split-word',
+        charsClass:  'split-char',
+        reduceWhiteSpace: false,
+        onSplit: (self) => {
+          assignTargets(self);
+          return gsap.fromTo(targets, { ...from }, {
+            ...to,
+            duration,
+            ease,
+            stagger: delay / 1000,
+            scrollTrigger: {
+              trigger: el,
+              start,
+              once: true,
+              fastScrollEnd: true,
+              anticipatePin: 0.4,
+            },
+            onComplete: () => {
+              animationCompletedRef.current = true;
+              onCompleteRef.current?.();
+            },
+            willChange: 'transform, opacity',
+            force3D: true,
+          });
+        },
+      });
 
-    el._rbsplitInstance = splitInstance;
+      el._rbsplitInstance = splitInstance;
 
-    return () => {
-      ScrollTrigger.getAll().forEach((st) => { if (st.trigger === el) st.kill(); });
-      try { splitInstance.revert(); } catch (_) {}
-      el._rbsplitInstance = null;
-    };
-  }, {
-    dependencies: [
-      text, delay, duration, ease, splitType,
-      JSON.stringify(from), JSON.stringify(to),
-      threshold, rootMargin, fontsLoaded,
-    ],
-    scope: ref,
-  });
+      return () => {
+        ScrollTrigger.getAll().forEach((st) => { if (st.trigger === el) st.kill(); });
+        try { splitInstance.revert(); } catch (_) {}
+        el._rbsplitInstance = null;
+      };
+    },
+    {
+      dependencies: [
+        text, delay, duration, ease, splitType,
+        JSON.stringify(from), JSON.stringify(to),
+        threshold, rootMargin, fontsLoaded,
+      ],
+      scope: ref,
+    },
+  );
 
   const Tag = tag || 'p';
   return (
@@ -569,9 +592,9 @@ function SplitText({
   );
 }
 
-// ─────────────────────────────────────────────
-// IntroPage — Main Landing Page
-// ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
+   IntroPage
+───────────────────────────────────────────────────────────── */
 
 export default function IntroPage() {
   const contentRef = useRef(null);
@@ -581,44 +604,46 @@ export default function IntroPage() {
       gsap.fromTo(
         contentRef.current,
         { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 1.4, ease: 'power3.out', delay: 0.35 }
+        { opacity: 1, y: 0, duration: 1.5, ease: 'power3.out', delay: 0.4 },
       );
     }
   }, []);
 
   return (
     <>
+      {/* ── Global styles injected once ── */}
       <style>{`
-        /* Reset */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body, #root {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          background: #000;
+        }
 
-        /* Root — full viewport, black base */
+        /* Root page shell */
         .intro-root {
           position: relative;
           width: 100vw;
-          height: 100dvh;    /* respects mobile browser chrome */
-          min-height: 100vh; /* fallback */
+          height: 100dvh;
+          min-height: 100vh;
           overflow: hidden;
-          background: #000;
+          background: transparent;
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
-        /* Background layer wraps FloatingLines */
-        .intro-bg {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-        }
-
-        /* Readability gradient overlay */
+        /*
+         * The canvas lives on <body> with position:fixed (z-index 0).
+         * This overlay sits on top of it but below the text content.
+         */
         .intro-overlay {
-          position: absolute;
+          position: fixed;
           inset: 0;
           z-index: 1;
           background: radial-gradient(
             ellipse at 50% 50%,
-            rgba(0,0,0,0.30) 0%,
-            rgba(0,0,0,0.76) 100%
+            rgba(0,0,0,0.28) 0%,
+            rgba(0,0,0,0.75) 100%
           );
           pointer-events: none;
         }
@@ -628,17 +653,19 @@ export default function IntroPage() {
           position: relative;
           z-index: 10;
           width: 100%;
-          height: 100%;
+          height: 100dvh;
+          min-height: 100vh;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           padding: 2rem 1.5rem;
+          gap: 0;
         }
 
         /* ── Company name ── */
         .company-name {
-          font-size: clamp(2.75rem, 10vw, 6rem);
+          font-size: clamp(2.6rem, 9vw, 6rem);
           font-weight: 800;
           letter-spacing: -0.03em;
           line-height: 1.05;
@@ -648,10 +675,10 @@ export default function IntroPage() {
           background-clip: text;
           display: block;
           text-align: center;
-          margin-bottom: 0.875rem;
+          margin-bottom: 0.9rem;
         }
 
-        /* Each split char must inherit the gradient */
+        /* Each animated split char must carry the gradient */
         .company-name .split-char {
           display: inline-block;
           background: linear-gradient(135deg, #e879f9 0%, #818cf8 48%, #38bdf8 100%);
@@ -662,20 +689,20 @@ export default function IntroPage() {
 
         /* ── Tagline ── */
         .tagline-text {
-          font-size: clamp(0.9rem, 2.4vw, 1.2rem);
+          font-size: clamp(0.875rem, 2.2vw, 1.15rem);
           font-weight: 400;
           color: #94a3b8;
           line-height: 1.7;
           text-align: center;
-          max-width: 520px;
+          max-width: 500px;
           margin-bottom: 2.75rem;
         }
 
         /* ── Get Started label ── */
         .get-started-label {
-          font-size: 0.72rem;
+          font-size: 0.7rem;
           font-weight: 600;
-          letter-spacing: 0.15em;
+          letter-spacing: 0.16em;
           text-transform: uppercase;
           color: #475569;
           margin-bottom: 0.875rem;
@@ -690,7 +717,7 @@ export default function IntroPage() {
           justify-content: center;
         }
 
-        /* Shared button base */
+        /* Shared base */
         .btn {
           padding: 0.7rem 2.25rem;
           font-size: 0.9375rem;
@@ -702,34 +729,33 @@ export default function IntroPage() {
           font-family: inherit;
           outline: none;
           transition:
-            transform   0.18s ease,
-            box-shadow  0.18s ease,
-            background  0.18s ease,
-            border-color 0.18s ease,
-            opacity     0.18s ease;
+            transform     0.18s ease,
+            box-shadow    0.18s ease,
+            background    0.18s ease,
+            border-color  0.18s ease,
+            opacity       0.18s ease;
         }
 
-        /* Ghost / outline button */
+        /* Ghost / outline */
         .btn-ghost {
           background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.18);
+          border: 1px solid rgba(255,255,255,0.2);
           color: #f1f5f9;
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
         }
         .btn-ghost:hover {
           background: rgba(255,255,255,0.14);
-          border-color: rgba(255,255,255,0.38);
+          border-color: rgba(255,255,255,0.4);
           transform: scale(1.04);
         }
         .btn-ghost:active { transform: scale(0.97); }
 
-        /* Filled gradient button */
+        /* Filled gradient */
         .btn-primary {
           background: linear-gradient(135deg, #a855f7, #6366f1);
           border: 1px solid transparent;
           color: #fff;
-          box-shadow: 0 0 0 0 rgba(168,85,247,0);
         }
         .btn-primary:hover {
           opacity: 0.87;
@@ -738,42 +764,40 @@ export default function IntroPage() {
         }
         .btn-primary:active { transform: scale(0.97); }
 
-        /* Mobile: stack buttons */
+        /* Mobile: stack buttons full-width */
         @media (max-width: 480px) {
           .btn-row { flex-direction: column; align-items: center; width: 100%; }
           .btn { width: 100%; max-width: 260px; }
         }
       `}</style>
 
+      {/* The canvas is injected on <body> by FloatingLines itself */}
+      <FloatingLines
+        enabledWaves={['top', 'middle', 'bottom']}
+        lineCount={5}
+        lineDistance={5}
+        bendRadius={5}
+        bendStrength={-0.5}
+        interactive={true}
+        parallax={true}
+        parallaxStrength={0.2}
+        mouseDamping={0.05}
+        animationSpeed={1}
+        mixBlendMode="screen"
+      />
+
+      {/* Dark gradient overlay above the canvas */}
+      <div className="intro-overlay" />
+
+      {/* Page shell */}
       <div className="intro-root">
-
-        {/* ── Animated background ── */}
-        <div className="intro-bg">
-          <FloatingLines
-            enabledWaves={['top', 'middle', 'bottom']}
-            lineCount={5}
-            lineDistance={5}
-            bendRadius={5}
-            bendStrength={-0.5}
-            interactive={true}
-            parallax={true}
-            parallaxStrength={0.2}
-            mouseDamping={0.05}
-            animationSpeed={1}
-            mixBlendMode="screen"
-          />
-        </div>
-
-        {/* ── Overlay for text legibility ── */}
-        <div className="intro-overlay" />
-
-        {/* ── Main content ── */}
+        {/* Animated foreground */}
         <div
           ref={contentRef}
           className="intro-content"
           style={{ opacity: 0 }}
         >
-          {/* Company name — animated char by char */}
+          {/* Company name — char-by-char animation */}
           <SplitText
             text="Luminary"
             tag="h1"
@@ -789,7 +813,7 @@ export default function IntroPage() {
             textAlign="center"
           />
 
-          {/* Tagline — animated word by word */}
+          {/* Tagline — word-by-word animation */}
           <SplitText
             text="Design systems that move at the speed of thought."
             tag="p"
@@ -805,7 +829,7 @@ export default function IntroPage() {
             textAlign="center"
           />
 
-          {/* Get started CTA label */}
+          {/* CTA label */}
           <p className="get-started-label">Get Started</p>
 
           {/* Action buttons */}
@@ -818,7 +842,6 @@ export default function IntroPage() {
             </button>
           </div>
         </div>
-
       </div>
     </>
   );
