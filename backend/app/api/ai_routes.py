@@ -336,7 +336,7 @@ async def report_explainer(
     return ReportExplainerResponse(**result)
 
 
-# ─── Smart Health Chat ────────────────────────────────────────────────────────
+# ─── Smart Health Chat (Legacy - kept for backward compatibility) ────────────
 
 @ai_router.post("/smart-chat", response_model=SmartChatResponse)
 def smart_chat(payload: SmartChatRequest, user: dict = Depends(get_current_user)):
@@ -401,6 +401,95 @@ def smart_chat(payload: SmartChatRequest, user: dict = Depends(get_current_user)
         disclaimer=result.get("disclaimer", DISCLAIMER),
         record_id=record_id,
     )
+
+
+# ─── Smart Chat Orchestrator (New Enhanced Version) ───────────────────────────
+
+@ai_router.post("/chat-orchestrator")
+async def chat_orchestrator_endpoint(
+    message: str = Form(""),
+    upload_intent: str = Form("none"),  # "symptom", "prescription", "report", "none"
+    chat_history: str = Form("[]"),  # JSON string of chat history
+    session_id: str = Form(None),
+    file: UploadFile | None = File(None),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Smart Chat Orchestrator - Routes requests to appropriate agents.
+    
+    This endpoint intelligently routes user input to:
+    - Symptom Checker (for health concerns and symptoms)
+    - Prescription Analyzer (for prescription-related queries)
+    - Report Explainer (for medical report analysis)
+    - General Health Chat (for other health questions)
+    
+    Routing is determined by the upload_intent parameter (which button was used).
+    """
+    from app.services.chat_orchestrator import chat_orchestrator
+    import json
+    
+    # Generate session ID if not provided
+    if not session_id:
+        session_id = str(uuid.uuid4())
+    
+    # Parse chat history
+    try:
+        history = json.loads(chat_history) if chat_history else []
+    except json.JSONDecodeError:
+        history = []
+    
+    # Process uploaded file if present
+    file_data = None
+    if file:
+        file_bytes = await file.read()
+        if not file_service.validate_file_size(file_bytes):
+            raise HTTPException(status_code=413, detail="File too large.")
+        
+        file_base64 = file_service.file_to_base64(file_bytes)
+        mime_type = file_service.detect_mime_type(file_bytes, file.filename)
+        
+        file_data = {
+            "base64": file_base64,
+            "mime_type": mime_type,
+            "filename": file.filename,
+        }
+    
+    # Route to orchestrator
+    try:
+        result = await chat_orchestrator.process_chat_request(
+            user_message=message,
+            file_data=file_data,
+            upload_intent=upload_intent,
+            chat_history=history,
+            user_id=user["sub"],
+        )
+        
+        # Save to database
+        record_id = ai_record_service.save_chat(
+            user["sub"],
+            session_id,
+            message,
+            result["answer"],
+            {
+                "agent_used": result.get("agent_used"),
+                "upload_intent": upload_intent,
+                "has_file": file is not None,
+            },
+        )
+        
+        return {
+            "answer": result["answer"],
+            "session_id": session_id,
+            "agent_used": result.get("agent_used", "general_chat"),
+            "supports_actions": result.get("supports_actions", False),
+            "suggested_actions": result.get("suggested_actions", []),
+            "disclaimer": result.get("disclaimer"),
+            "record_id": record_id,
+        }
+        
+    except Exception as exc:
+        logger.error(f"Chat orchestrator error: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @ai_router.post("/smart-chat/stream")

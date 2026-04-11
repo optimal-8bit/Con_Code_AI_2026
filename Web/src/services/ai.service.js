@@ -27,6 +27,24 @@ export const aiService = {
     return response.data;
   },
 
+  async chatOrchestrator(data) {
+    const formData = new FormData();
+    formData.append('message', data.message || '');
+    formData.append('upload_intent', data.upload_intent || 'none');
+    formData.append('chat_history', JSON.stringify(data.chat_history || []));
+    if (data.session_id) {
+      formData.append('session_id', data.session_id);
+    }
+    if (data.file) {
+      formData.append('file', data.file);
+    }
+
+    const response = await apiClient.post('/ai/chat-orchestrator', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   async chatStream(data) {
     const response = await apiClient.post('/ai/smart-chat/stream', data, {
       responseType: 'stream',

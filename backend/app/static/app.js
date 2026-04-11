@@ -541,16 +541,63 @@ const renderSymptomChecker = (container) => {
   };
 };
 
-// ─── AI FEATURE: CHAT ───────────────────────────────────────────────────────
+// ─── AI FEATURE: SMART CHAT ORCHESTRATOR ────────────────────────────────────
 const renderChat = (container) => {
+  // Reset chat state
+  state.chatHistory = [];
+  state.session_id = null;
+  state.currentUploadIntent = 'none';
+  state.currentFile = null;
+
   container.innerHTML = `
+    <div class="page-header mb-16">
+      <h1 class="page-title">💬 Smart Health Chat</h1>
+      <p class="page-sub">Your intelligent health assistant with specialized analysis</p>
+    </div>
+
     <div class="chat-container glass-card">
       <div class="chat-messages" id="chat-messages">
-        <div class="chat-bubble assistant">Hello! I'm your Health Assistant. How can I help?</div>
+        <div class="chat-bubble assistant">
+          <div class="markdown-content">
+            <p>👋 Hello! I'm your Smart Health Assistant.</p>
+            <p>I can help you with:</p>
+            <ul>
+              <li><strong>🩺 Symptoms</strong> - Upload a photo or describe how you're feeling</li>
+              <li><strong>💊 Prescriptions</strong> - Upload and analyze your prescription</li>
+              <li><strong>📊 Medical Reports</strong> - Understand your lab results</li>
+              <li><strong>💬 General Questions</strong> - Ask anything about health</li>
+            </ul>
+            <p>Use the upload buttons below to attach files, or just type your question!</p>
+          </div>
+        </div>
       </div>
+      
+      <!-- Upload Buttons Section -->
+      <div class="chat-upload-section">
+        <div class="upload-buttons-grid">
+          <button class="upload-intent-btn" id="upload-symptom-btn" data-intent="symptom">
+            <div class="upload-btn-icon">🩺</div>
+            <div class="upload-btn-label">Upload Symptom</div>
+            <div class="upload-btn-desc">Photo of symptoms</div>
+          </button>
+          <button class="upload-intent-btn" id="upload-prescription-btn" data-intent="prescription">
+            <div class="upload-btn-icon">💊</div>
+            <div class="upload-btn-label">Upload Prescription</div>
+            <div class="upload-btn-desc">Prescription image</div>
+          </button>
+          <button class="upload-intent-btn" id="upload-report-btn" data-intent="report">
+            <div class="upload-btn-icon">📊</div>
+            <div class="upload-btn-label">Upload Report</div>
+            <div class="upload-btn-desc">Lab/medical report</div>
+          </button>
+        </div>
+        <input type="file" id="chat-file-input" accept="image/*,application/pdf" style="display: none;">
+        <div id="chat-file-preview" style="display: none;"></div>
+      </div>
+
       <div class="chat-input-area">
         <div style="position: relative; flex: 1;">
-          <textarea class="chat-input" id="chat-input" placeholder="Ask anything or click mic to speak..."></textarea>
+          <textarea class="chat-input" id="chat-input" placeholder="Type your message or use upload buttons above..."></textarea>
           <button type="button" id="chat-voice-btn" class="btn btn-ghost" style="position: absolute; right: 10px; bottom: 10px; padding: 8px 12px; min-width: auto;">
             🎤
           </button>
@@ -563,8 +610,90 @@ const renderChat = (container) => {
 
   const input = document.getElementById('chat-input');
   const msgBox = document.getElementById('chat-messages');
+  const fileInput = document.getElementById('chat-file-input');
+  const filePreview = document.getElementById('chat-file-preview');
+
+  // Setup upload intent buttons
+  document.querySelectorAll('.upload-intent-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const intent = btn.dataset.intent;
+      state.currentUploadIntent = intent;
+      fileInput.click();
+    });
+  });
+
+  // Handle file selection
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      const file = e.target.files[0];
+      state.currentFile = file;
+      
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const intentLabels = {
+          symptom: '🩺 Symptom Photo',
+          prescription: '💊 Prescription',
+          report: '📊 Medical Report'
+        };
+        
+        filePreview.style.display = 'block';
+        if (file.type.startsWith('image/')) {
+          filePreview.innerHTML = `
+            <div style="padding: 12px; background: var(--surface); border-radius: 8px; margin: 8px 16px; display: flex; align-items: center; gap: 12px;">
+              <img src="${event.target.result}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text);">${intentLabels[state.currentUploadIntent]}</div>
+                <div style="font-size: 0.85rem; color: var(--text-2);">${file.name}</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="clearChatFile()">✕</button>
+            </div>
+          `;
+        } else {
+          filePreview.innerHTML = `
+            <div style="padding: 12px; background: var(--surface); border-radius: 8px; margin: 8px 16px; display: flex; align-items: center; gap: 12px;">
+              <div style="width: 60px; height: 60px; background: var(--primary-glow); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 24px;">📄</div>
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text);">${intentLabels[state.currentUploadIntent]}</div>
+                <div style="font-size: 0.85rem; color: var(--text-2);">${file.name}</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="clearChatFile()">✕</button>
+            </div>
+          `;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
 
   // Voice recognition for chat
+  setupChatVoiceRecognition(input);
+
+  // Send message handler
+  document.getElementById('chat-send').onclick = () => sendChatMessage();
+
+  // Enter to send (Shift+Enter for new line)
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+
+  // Scroll to bottom
+  msgBox.scrollTop = msgBox.scrollHeight;
+};
+
+// Clear uploaded file
+window.clearChatFile = () => {
+  state.currentFile = null;
+  state.currentUploadIntent = 'none';
+  document.getElementById('chat-file-input').value = '';
+  document.getElementById('chat-file-preview').style.display = 'none';
+};
+
+// Setup voice recognition
+const setupChatVoiceRecognition = (input) => {
   let chatRecognition = null;
   let isChatListening = false;
 
@@ -643,38 +772,145 @@ const renderChat = (container) => {
     const voiceBtn = document.getElementById('chat-voice-btn');
     if (voiceBtn) voiceBtn.style.display = 'none';
   }
+};
 
-  document.getElementById('chat-send').onclick = async () => {
-    const q = input.value.trim();
-    if (!q) return;
-    const userBubble = document.createElement('div');
-    userBubble.className = 'chat-bubble user';
-    userBubble.textContent = q;
-    msgBox.appendChild(userBubble);
-    input.value = '';
+// Send chat message
+const sendChatMessage = async () => {
+  const input = document.getElementById('chat-input');
+  const msgBox = document.getElementById('chat-messages');
+  const message = input.value.trim();
+  
+  if (!message && !state.currentFile) {
+    showToast('Please enter a message or upload a file', 'error');
+    return;
+  }
 
-    try {
-      const data = await apiRequest('/ai/smart-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, chat_history: state.chatHistory })
-      });
-      const aiBubble = document.createElement('div');
-      aiBubble.className = 'chat-bubble assistant';
-      aiBubble.textContent = data.answer;
-      msgBox.appendChild(aiBubble);
-      state.chatHistory.push({ role: 'user', content: q }, { role: 'assistant', content: data.answer });
-      msgBox.scrollTop = msgBox.scrollHeight;
-    } catch (err) { showToast(err.message, 'error'); }
-  };
+  // Add user message to chat
+  const userBubble = document.createElement('div');
+  userBubble.className = 'chat-bubble user';
+  userBubble.innerHTML = `<div class="markdown-content">${escapeHtml(message || '📎 File uploaded')}</div>`;
+  msgBox.appendChild(userBubble);
+  
+  // Clear input
+  input.value = '';
+  
+  // Show typing indicator
+  const typingBubble = document.createElement('div');
+  typingBubble.className = 'chat-bubble assistant';
+  typingBubble.id = 'typing-indicator';
+  typingBubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  msgBox.appendChild(typingBubble);
+  msgBox.scrollTop = msgBox.scrollHeight;
 
-  // Enter to send (Shift+Enter for new line)
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      document.getElementById('chat-send').click();
+  try {
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('message', message);
+    formData.append('upload_intent', state.currentUploadIntent || 'none');
+    formData.append('chat_history', JSON.stringify(state.chatHistory));
+    if (state.session_id) {
+      formData.append('session_id', state.session_id);
     }
-  });
+    if (state.currentFile) {
+      formData.append('file', state.currentFile);
+    }
+
+    // Call orchestrator API
+    const data = await apiRequest('/ai/chat-orchestrator', {
+      method: 'POST',
+      body: formData
+    });
+
+    // Remove typing indicator
+    typingBubble.remove();
+
+    // Add AI response with markdown rendering
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'chat-bubble assistant';
+    
+    // Render markdown
+    const markdownHtml = marked.parse(data.answer);
+    aiBubble.innerHTML = `<div class="markdown-content">${markdownHtml}</div>`;
+    
+    // Add disclaimer if present
+    if (data.disclaimer) {
+      const disclaimer = document.createElement('div');
+      disclaimer.className = 'chat-disclaimer';
+      disclaimer.textContent = data.disclaimer;
+      aiBubble.appendChild(disclaimer);
+    }
+    
+    // Add action buttons if supported
+    if (data.supports_actions && data.suggested_actions && data.suggested_actions.length > 0) {
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'chat-actions';
+      data.suggested_actions.forEach(action => {
+        const btn = document.createElement('button');
+        btn.className = 'chat-action-btn';
+        btn.textContent = action.label;
+        btn.onclick = () => handleChatAction(action.action);
+        actionsDiv.appendChild(btn);
+      });
+      aiBubble.appendChild(actionsDiv);
+    }
+    
+    msgBox.appendChild(aiBubble);
+
+    // Update state
+    state.session_id = data.session_id;
+    state.chatHistory.push(
+      { role: 'user', content: message },
+      { role: 'assistant', content: data.answer }
+    );
+
+    // Clear file after sending
+    clearChatFile();
+
+    msgBox.scrollTop = msgBox.scrollHeight;
+  } catch (err) {
+    typingBubble.remove();
+    showToast(err.message, 'error');
+  }
+};
+
+// Handle chat action buttons
+const handleChatAction = (action) => {
+  switch (action) {
+    case 'book_appointment':
+      navigateTo('appointments');
+      showToast('Opening appointments...', 'info');
+      break;
+    case 'view_history':
+      navigateTo('records');
+      showToast('Opening medical records...', 'info');
+      break;
+    case 'set_reminders':
+      navigateTo('medications');
+      showToast('Opening medications...', 'info');
+      break;
+    case 'find_pharmacy':
+      showToast('Pharmacy finder coming soon!', 'info');
+      break;
+    case 'order_medicines':
+      showToast('Medicine ordering coming soon!', 'info');
+      break;
+    case 'save_record':
+      navigateTo('records');
+      showToast('Opening medical records...', 'info');
+      break;
+    case 'share_doctor':
+      showToast('Share feature coming soon!', 'info');
+      break;
+    default:
+      showToast('Action not implemented yet', 'info');
+  }
+};
+
+// Escape HTML for security
+const escapeHtml = (text) => {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 };
 
 // ─── AI FEATURE: REPORT EXPLAINER ──────────────────────────────────────────
