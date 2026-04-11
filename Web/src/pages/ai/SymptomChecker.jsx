@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { aiService } from '@/services/ai.service';
 import { patientService } from '@/services/patient.service';
 import { getSeverityColor, handleApiError } from '@/lib/utils';
-import { Activity, Upload, AlertCircle, CheckCircle, Calendar, User, Star, MapPin, Phone } from 'lucide-react';
+import { Activity, Upload, AlertCircle, CheckCircle, Calendar, User, Star, MapPin, Phone, Mic, MicOff } from 'lucide-react';
 
 export default function SymptomChecker() {
   const navigate = useNavigate();
@@ -25,6 +25,89 @@ export default function SymptomChecker() {
   const [error, setError] = useState('');
   const [recommendedDoctors, setRecommendedDoctors] = useState([]);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [interimText, setInterimText] = useState('');
+  const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef('');
+
+  // Initialize Web Speech API
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      setVoiceSupported(true);
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        // Update interim text for live display
+        setInterimText(interimTranscript);
+
+        // Append final transcript to the form data
+        if (finalTranscript) {
+          finalTranscriptRef.current += finalTranscript;
+          setFormData(prev => ({
+            ...prev,
+            symptom_text: prev.symptom_text + finalTranscript
+          }));
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        setInterimText('');
+        if (event.error === 'not-allowed') {
+          setError('Microphone access denied. Please allow microphone access in your browser settings.');
+        } else if (event.error === 'no-speech') {
+          setError('No speech detected. Please try again.');
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+        setInterimText('');
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleVoiceInput = () => {
+    if (!voiceSupported) {
+      setError('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      setInterimText('');
+    } else {
+      setError('');
+      finalTranscriptRef.current = '';
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
 
   const getSpecialtyFromRecommendation = (specialistText) => {
     const text = specialistText.toLowerCase();
@@ -133,15 +216,58 @@ export default function SymptomChecker() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Symptoms *</label>
-                <textarea
-                  value={formData.symptom_text}
-                  onChange={(e) => setFormData({ ...formData, symptom_text: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
-                  rows="4"
-                  placeholder="Describe your symptoms in detail..."
-                  required
-                />
+                <label className="text-sm font-medium text-gray-700 flex items-center justify-between">
+                  <span>Symptoms *</span>
+                  {voiceSupported && (
+                    <button
+                      type="button"
+                      onClick={toggleVoiceInput}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        isListening
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                    >
+                      {isListening ? (
+                        <>
+                          <MicOff className="h-4 w-4" />
+                          <span>Stop Recording</span>
+                          <span className="flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="h-4 w-4" />
+                          <span>Voice Input</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={formData.symptom_text}
+                    onChange={(e) => setFormData({ ...formData, symptom_text: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows="4"
+                    placeholder="Describe your symptoms in detail... (You can also use voice input)"
+                    required
+                  />
+                  {isListening && interimText && (
+                    <div className="absolute bottom-2 left-2 right-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700 pointer-events-none">
+                      <span className="italic opacity-75">{interimText}</span>
+                      <span className="inline-block w-1 h-4 bg-blue-500 ml-1 animate-pulse"></span>
+                    </div>
+                  )}
+                </div>
+                {isListening && (
+                  <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    Listening... Speak clearly into your microphone
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

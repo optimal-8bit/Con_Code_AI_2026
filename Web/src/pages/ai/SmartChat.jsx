@@ -116,14 +116,22 @@ export default function SmartChat() {
     e.preventDefault();
     if ((!input.trim() && !selectedFile) || loading) return;
 
+    // Build user message content
+    let userContent = input.trim();
+    if (selectedFile && userContent) {
+      userContent = `${userContent}\n📎 ${selectedFile.name}`;
+    } else if (selectedFile && !userContent) {
+      userContent = `📎 ${selectedFile.name}`;
+    }
+
     const userMessage = { 
       role: 'user', 
-      content: input || '📎 File uploaded',
+      content: userContent,
       hasFile: !!selectedFile 
     };
     setMessages((prev) => [...prev, userMessage]);
     
-    const currentInput = input;
+    const currentInput = input.trim();
     const currentFile = selectedFile;
     const currentIntent = uploadIntent;
     
@@ -238,8 +246,47 @@ export default function SmartChat() {
                       </div>
                       <div className="flex-1 max-w-[85%]">
                         <div className="bg-gray-50 rounded-lg px-4 py-3 shadow-sm border border-gray-200">
-                          <div className="prose prose-sm max-w-none">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          <div className="prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:list-disc prose-ul:ml-4 prose-ol:list-decimal prose-ol:ml-4 prose-li:text-gray-700 prose-li:my-1">
+                            <ReactMarkdown
+                              components={{
+                                // Headings
+                                h1: ({node, ...props}) => <h1 className="text-xl font-bold text-gray-900 mt-4 mb-2" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="text-lg font-bold text-gray-900 mt-3 mb-2" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="text-base font-semibold text-gray-900 mt-2 mb-1" {...props} />,
+                                
+                                // Paragraphs
+                                p: ({node, ...props}) => <p className="text-gray-700 leading-relaxed mb-2" {...props} />,
+                                
+                                // Lists
+                                ul: ({node, ...props}) => <ul className="list-disc ml-5 mb-2 space-y-1" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal ml-5 mb-2 space-y-1" {...props} />,
+                                li: ({node, ...props}) => <li className="text-gray-700" {...props} />,
+                                
+                                // Emphasis
+                                strong: ({node, ...props}) => <strong className="font-semibold text-gray-900" {...props} />,
+                                em: ({node, ...props}) => <em className="italic text-gray-700" {...props} />,
+                                
+                                // Code
+                                code: ({node, inline, ...props}) => 
+                                  inline ? (
+                                    <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                                  ) : (
+                                    <code className="block bg-gray-800 text-gray-100 p-3 rounded-lg text-sm font-mono overflow-x-auto my-2" {...props} />
+                                  ),
+                                
+                                // Blockquote
+                                blockquote: ({node, ...props}) => (
+                                  <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 my-2" {...props} />
+                                ),
+                                
+                                // Links
+                                a: ({node, ...props}) => (
+                                  <a className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" {...props} />
+                                ),
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
                           </div>
                         </div>
                         
