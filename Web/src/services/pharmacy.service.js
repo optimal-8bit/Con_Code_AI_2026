@@ -1,13 +1,11 @@
 import apiClient from '@/lib/api-client';
 
-const pharmacyService = {
-  // Dashboard
+export const pharmacyService = {
   async getDashboard() {
     const response = await apiClient.get('/pharmacy/dashboard');
     return response.data;
   },
 
-  // Prescriptions
   async getPrescriptions(status = null) {
     const params = status ? { status } : {};
     const response = await apiClient.get('/pharmacy/prescriptions', { params });
@@ -24,7 +22,6 @@ const pharmacyService = {
     return response.data;
   },
 
-  // Inventory
   async getInventory(search = null) {
     const params = search ? { search } : {};
     const response = await apiClient.get('/pharmacy/inventory', { params });
@@ -48,7 +45,11 @@ const pharmacyService = {
     return response.data;
   },
 
-  // Orders
+  async getNotifications() {
+    const response = await apiClient.get('/pharmacy/notifications');
+    return response.data;
+  },
+
   async getOrders(status = null) {
     const params = status ? { status } : {};
     const response = await apiClient.get('/pharmacy/orders', { params });
@@ -66,12 +67,4 @@ const pharmacyService = {
     });
     return response.data;
   },
-
-  // Notifications
-  async getNotifications() {
-    const response = await apiClient.get('/pharmacy/notifications');
-    return response.data;
-  },
 };
-
-export default pharmacyService;

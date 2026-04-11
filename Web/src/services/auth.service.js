@@ -1,19 +1,30 @@
 import apiClient from '@/lib/api-client';
 
-const authService = {
+export const authService = {
   async register(data) {
     const response = await apiClient.post('/auth/register', data);
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
+      localStorage.setItem('refresh_token', response.data.refresh_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
     return response.data;
   },
 
   async login(email, password) {
     const response = await apiClient.post('/auth/login', { email, password });
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
+      localStorage.setItem('refresh_token', response.data.refresh_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
     return response.data;
   },
 
-  async refreshToken(refreshToken) {
-    const response = await apiClient.post('/auth/refresh', { refresh_token: refreshToken });
-    return response.data;
+  async logout() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
   },
 
   async getProfile() {
@@ -23,6 +34,7 @@ const authService = {
 
   async updateProfile(data) {
     const response = await apiClient.patch('/auth/me', data);
+    localStorage.setItem('user', JSON.stringify(response.data));
     return response.data;
   },
 
@@ -33,6 +45,13 @@ const authService = {
     });
     return response.data;
   },
-};
 
-export default authService;
+  getCurrentUser() {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  isAuthenticated() {
+    return !!localStorage.getItem('access_token');
+  },
+};

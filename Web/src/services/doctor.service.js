@@ -1,13 +1,11 @@
 import apiClient from '@/lib/api-client';
 
-const doctorService = {
-  // Dashboard
+export const doctorService = {
   async getDashboard() {
     const response = await apiClient.get('/doctor/dashboard');
     return response.data;
   },
 
-  // Appointments
   async getAppointments(status = null) {
     const params = status ? { status } : {};
     const response = await apiClient.get('/doctor/appointments', { params });
@@ -19,18 +17,16 @@ const doctorService = {
     return response.data;
   },
 
-  // Patients
-  async getPatients() {
-    const response = await apiClient.get('/doctor/patients');
-    return response.data;
-  },
-
   async getPatient(id) {
     const response = await apiClient.get(`/doctor/patients/${id}`);
     return response.data;
   },
 
-  // Prescriptions
+  async getPatients() {
+    const response = await apiClient.get('/doctor/patients');
+    return response.data;
+  },
+
   async issuePrescription(data) {
     const response = await apiClient.post('/doctor/prescriptions', data);
     return response.data;
@@ -41,7 +37,6 @@ const doctorService = {
     return response.data;
   },
 
-  // Notifications
   async getNotifications() {
     const response = await apiClient.get('/doctor/notifications');
     return response.data;
@@ -52,7 +47,6 @@ const doctorService = {
     return response.data;
   },
 
-  // Availability
   async setAvailability(date, slots) {
     const response = await apiClient.post('/doctor/availability', {
       date,
@@ -71,5 +65,3 @@ const doctorService = {
     return response.data;
   },
 };
-
-export default doctorService;

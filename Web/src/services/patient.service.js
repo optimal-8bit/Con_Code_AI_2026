@@ -1,21 +1,14 @@
 import apiClient from '@/lib/api-client';
 
-const patientService = {
-  // Dashboard
+export const patientService = {
   async getDashboard() {
     const response = await apiClient.get('/patient/dashboard');
     return response.data;
   },
 
-  // Appointments
   async getAppointments(status = null) {
     const params = status ? { status } : {};
     const response = await apiClient.get('/patient/appointments', { params });
-    return response.data;
-  },
-
-  async getAppointment(id) {
-    const response = await apiClient.get(`/patient/appointments/${id}`);
     return response.data;
   },
 
@@ -24,12 +17,16 @@ const patientService = {
     return response.data;
   },
 
+  async getAppointment(id) {
+    const response = await apiClient.get(`/patient/appointments/${id}`);
+    return response.data;
+  },
+
   async cancelAppointment(id) {
     const response = await apiClient.delete(`/patient/appointments/${id}`);
     return response.data;
   },
 
-  // Prescriptions
   async getPrescriptions() {
     const response = await apiClient.get('/patient/prescriptions');
     return response.data;
@@ -40,21 +37,19 @@ const patientService = {
     return response.data;
   },
 
-  // Medical Records
-  async getRecords(recordType = null) {
+  async getMedicalRecords(recordType = null) {
     const params = recordType ? { record_type: recordType } : {};
     const response = await apiClient.get('/patient/records', { params });
     return response.data;
   },
 
-  async uploadRecord(formData) {
+  async uploadMedicalRecord(formData) {
     const response = await apiClient.post('/patient/records', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
-  // Medications
   async getMedications() {
     const response = await apiClient.get('/patient/medications');
     return response.data;
@@ -70,7 +65,6 @@ const patientService = {
     return response.data;
   },
 
-  // Notifications
   async getNotifications(unreadOnly = false) {
     const params = unreadOnly ? { unread_only: true } : {};
     const response = await apiClient.get('/patient/notifications', { params });
@@ -87,7 +81,6 @@ const patientService = {
     return response.data;
   },
 
-  // Doctors
   async searchDoctors(specialty = null, name = null) {
     const params = {};
     if (specialty) params.specialty = specialty;
@@ -96,7 +89,6 @@ const patientService = {
     return response.data;
   },
 
-  // Pharmacy & Orders
   async matchPharmacies(medicines) {
     const response = await apiClient.post('/patient/match-pharmacies', { medicines });
     return response.data;
@@ -127,7 +119,6 @@ const patientService = {
     return response.data;
   },
 
-  // AI History
   async getPrescriptionSchedules(limit = 20) {
     const response = await apiClient.get('/patient/ai/prescription-schedules', { params: { limit } });
     return response.data;
@@ -168,5 +159,3 @@ const patientService = {
     return response.data;
   },
 };
-
-export default patientService;

@@ -1,7 +1,6 @@
 import apiClient from '@/lib/api-client';
 
-const aiService = {
-  // Symptom Checker
+export const aiService = {
   async checkSymptoms(formData) {
     const response = await apiClient.post('/ai/symptom-checker', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -9,7 +8,6 @@ const aiService = {
     return response.data;
   },
 
-  // Prescription Analyzer
   async analyzePrescription(formData) {
     const response = await apiClient.post('/ai/prescription-analyzer', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -17,7 +15,6 @@ const aiService = {
     return response.data;
   },
 
-  // Report Explainer
   async explainReport(formData) {
     const response = await apiClient.post('/ai/report-explainer', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -25,7 +22,6 @@ const aiService = {
     return response.data;
   },
 
-  // Smart Chat
   async chat(data) {
     const response = await apiClient.post('/ai/smart-chat', data);
     return response.data;
@@ -48,7 +44,6 @@ const aiService = {
     return response.data;
   },
 
-  // Prescription Schedule
   async getPrescriptionSchedule(formData) {
     const response = await apiClient.post('/ai/prescription-schedule', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -68,5 +63,3 @@ const aiService = {
     return response.data;
   },
 };
-
-export default aiService;
