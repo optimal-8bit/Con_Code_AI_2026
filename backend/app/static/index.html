@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NextGen Health — AI Healthcare Platform</title>
+  <meta name="description" content="NextGen Health: AI-powered healthcare connecting patients, doctors, and pharmacies." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="screen active">
+  <div class="auth-bg">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+  <div class="auth-container">
+    <div class="auth-card glass-card">
+      <div class="brand">
+        <div class="brand-icon">💚</div>
+        <h1 class="brand-name">NextGen Health</h1>
+        <p class="brand-tagline">AI-Powered Healthcare Platform</p>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab active" data-tab="login">Sign In</button>
+        <button class="tab" data-tab="register">Register</button>
+      </div>
+
+      <form id="login-form" class="auth-form active">
+        <div class="field-group">
+          <label>Email Address</label>
+          <input id="login-email" type="email" placeholder="doctor@hospital.com" required />
+        </div>
+        <div class="field-group">
+          <label>Password</label>
+          <input id="login-password" type="password" placeholder="Min 6 chars" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+          <span>Sign In</span> <span class="btn-arrow">→</span>
+        </button>
+        <p class="auth-hint">💡 Register a new account or use existing credentials</p>
+      </form>
+
+      <form id="register-form" class="auth-form">
+        <div class="field-group">
+          <label>Full Name</label>
+          <input id="reg-name" type="text" placeholder="Dr. Aisha Khan" required />
+        </div>
+        <div class="field-group">
+          <label>Email</label>
+          <input id="reg-email" type="email" placeholder="your@email.com" required />
+        </div>
+        <div class="field-group">
+          <label>Password</label>
+          <input id="reg-password" type="password" placeholder="Min 6 characters" required />
+        </div>
+        <div class="field-group">
+          <label>Role</label>
+          <select id="reg-role">
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor</option>
+            <option value="pharmacy">Pharmacy</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Phone (optional)</label>
+          <input id="reg-phone" type="tel" placeholder="+91 9876543210" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="register-btn">
+          <span>Create Account</span> <span class="btn-arrow">→</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app-screen" class="screen">
+  <nav class="topnav">
+    <div class="topnav-brand">
+      <span>💚</span>
+      <span>NextGen Health</span>
+    </div>
+    <div class="topnav-actions">
+      <span id="user-badge" class="user-badge"></span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    </aside>
+    <main class="content" id="main-content">
+      <div class="loading-center"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- MODAL -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box glass-card" id="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+Dr. Sarah Johnson, MD
+General Medicine & Family Practice
+Medical License: MD-12345
+Phone: (555) 123-4567
+
+Date: April 11, 2026
+
+Patient Name: John Doe
+Age: 35 years
+Gender: Male
+Patient ID: P-2026-001
+
+PRESCRIPTION
+
+Rx:
+
+1. Amoxicillin 500mg
+   Sig: 1 capsule TDS (three times daily)
+   Duration: 7 days
+   Instructions: Take after meals with a full glass of water
+
+2. Paracetamol 650mg
+   Sig: 1 tablet BD (twice daily)
+   Duration: 5 days
+   Instructions: Take for fever or pain. Do not exceed 4 tablets in 24 hours
+
+3. Omeprazole 20mg
+   Sig: 1 capsule OD (once daily)
+   Duration: 14 days
+   Instructions: Take on empty stomach, 30 minutes before breakfast
+
+4. Cetirizine 10mg
+   Sig: 1 tablet OD (once daily)
+   Duration: 10 days
+   Instructions: Take at bedtime for allergic symptoms
+
+5. Vitamin D3 60,000 IU
+   Sig: 1 capsule once weekly
+   Duration: 8 weeks
+   Instructions: Take with milk or after a meal
+
+GENERAL INSTRUCTIONS:
+- Complete the full course of antibiotics even if you feel better
+- Avoid alcohol while on medication
+- Store medicines in a cool, dry place
+- Keep out of reach of children
+- If you experience any adverse reactions, contact immediately
+
+FOLLOW-UP:
+Please schedule a follow-up appointment after 7 days
+
+Doctor's Signature: _________________
+Dr. Sarah Johnson, MD
+
+---
+
+MEDICAL ABBREVIATIONS USED:
+- OD/QD: Once daily
+- BD/BID: Twice daily (bis in die)
+- TDS/TID: Three times daily (ter in die)
+- QID: Four times daily (quater in die)
+- AC: Before meals (ante cibum)
+- PC: After meals (post cibum)
+- HS: At bedtime (hora somni)
+- PRN: As needed (pro re nata)
+
+---
+
+This is a sample prescription for testing purposes.
+In a real scenario, prescriptions should be verified by a licensed healthcare provider.

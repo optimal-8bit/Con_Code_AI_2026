@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescription Schedule - NextGen Health</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .upload-area h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        .upload-area p {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .next-dose-banner {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(245, 87, 108, 0.3);
+        }
+
+        .next-dose-banner h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .next-dose-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .next-dose-time {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .next-dose-details h3 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .next-dose-details p {
+            opacity: 0.9;
+        }
+
+        .schedule-summary {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .schedule-summary h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+
+        .schedule-summary p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        .medicines-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .medicine-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-left: 5px solid #667eea;
+        }
+
+        .medicine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .medicine-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+        }
+
+        .medicine-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .medicine-dosage {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .medicine-badge {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .medicine-details {
+            margin-bottom: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .timing-section {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .timing-section h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .time-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .time-pill {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .time-pill.next {
+            background: #667eea;
+            color: white;
+        }
+
+        .instructions {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            border-radius: 6px;
+            color: #856404;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .adherence-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .adherence-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .adherence-btn.taken {
+            background: #4caf50;
+            color: white;
+        }
+
+        .adherence-btn.taken:hover {
+            background: #45a049;
+        }
+
+        .adherence-btn.skipped {
+            background: #f44336;
+            color: white;
+        }
+
+        .adherence-btn.skipped:hover {
+            background: #da190b;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .medicines-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .next-dose-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .upload-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💊 Prescription Schedule</h1>
+            <p>Upload your prescription and get a personalized medication schedule</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📋</div>
+                <h3>Upload Prescription</h3>
+                <p>Drag and drop your prescription image here, or click to browse</p>
+                <input type="file" id="fileInput" accept="image/*,application/pdf">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+            </div>
+            <div id="preview"></div>
+            <button class="btn" id="analyzeBtn" style="display: none; width: 100%;">Analyze Prescription</button>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <h3>Analyzing your prescription...</h3>
+            <p>Our AI is extracting medicine details and creating your schedule</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="next-dose-banner" id="nextDoseBanner" style="display: none;">
+                <h2>⏰ Next Dose</h2>
+                <div class="next-dose-info">
+                    <div class="next-dose-time" id="nextDoseTime"></div>
+                    <div class="next-dose-details">
+                        <h3 id="nextDoseMedicine"></h3>
+                        <p id="nextDoseDosage"></p>
+                        <p id="nextDoseInstructions"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="schedule-summary">
+                <h2>📅 Your Medication Schedule</h2>
+                <p id="scheduleSummary"></p>
+            </div>
+
+            <div class="medicines-grid" id="medicinesGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let selectedFile = null;
+        let currentSchedule = null;
+
+        // Mock token for demo (in production, use proper authentication)
+        const DEMO_TOKEN = 'demo-token';
+
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const preview = document.getElementById('preview');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.innerHTML = `<img src="${e.target.result}" class="preview-image" alt="Prescription preview">`;
+            };
+            reader.readAsDataURL(file);
+
+            analyzeBtn.style.display = 'block';
+        }
+
+        analyzeBtn.addEventListener('click', analyzePrescription);
+
+        async function analyzePrescription() {
+            if (!selectedFile) {
+                showError('Please select a prescription image first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('prescription_file', selectedFile);
+            formData.append('prescription_text', '');
+            formData.append('image_description', '');
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('errorMsg').classList.remove('active');
+            document.getElementById('results').classList.remove('active');
+
+            try {
+                const response = await fetch(`${API_BASE}/ai/prescription-schedule`, {
+                    method: 'POST',
+                    headers: {
+                        // In production, use proper JWT token
+                        // 'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Analysis failed: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                currentSchedule = data;
+                displayResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to analyze prescription. Please make sure the backend server is running and try again.');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        function displayResults(data) {
+            // Show next dose banner
+            if (data.next_upcoming_dose) {
+                const banner = document.getElementById('nextDoseBanner');
+                banner.style.display = 'block';
+                document.getElementById('nextDoseTime').textContent = data.next_upcoming_dose.time;
+                document.getElementById('nextDoseMedicine').textContent = data.next_upcoming_dose.medicine;
+                document.getElementById('nextDoseDosage').textContent = data.next_upcoming_dose.dosage;
+                document.getElementById('nextDoseInstructions').textContent = data.next_upcoming_dose.instructions || 'No special instructions';
+            }
+
+            // Show schedule summary
+            document.getElementById('scheduleSummary').textContent = data.schedule_summary;
+
+            // Display medicine cards
+            const grid = document.getElementById('medicinesGrid');
+            grid.innerHTML = '';
+
+            data.medicines.forEach((medicine, index) => {
+                const card = createMedicineCard(medicine, index);
+                grid.appendChild(card);
+            });
+
+            document.getElementById('results').classList.add('active');
+        }
+
+        function createMedicineCard(medicine, index) {
+            const card = document.createElement('div');
+            card.className = 'medicine-card';
+
+            const timePills = medicine.timing.map(time => {
+                const isNext = time === medicine.next_dose;
+                return `<span class="time-pill ${isNext ? 'next' : ''}">${time}</span>`;
+            }).join('');
+
+            card.innerHTML = `
+                <div class="medicine-header">
+                    <div>
+                        <div class="medicine-name">${medicine.name}</div>
+                        <div class="medicine-dosage">${medicine.dosage}</div>
+                    </div>
+                    <div class="medicine-badge">${medicine.times_per_day}x daily</div>
+                </div>
+
+                <div class="medicine-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Duration</span>
+                        <span class="detail-value">${medicine.duration_days} days</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Frequency</span>
+                        <span class="detail-value">${medicine.times_per_day} times per day</span>
+                    </div>
+                </div>
+
+                <div class="timing-section">
+                    <h4>⏰ Daily Schedule</h4>
+                    <div class="time-pills">
+                        ${timePills}
+                    </div>
+                </div>
+
+                ${medicine.instructions ? `
+                    <div class="instructions">
+                        <strong>📝 Instructions:</strong> ${medicine.instructions}
+                    </div>
+                ` : ''}
+
+                <div class="adherence-actions">
+                    <button class="adherence-btn taken" onclick="logAdherence('${medicine.name}', '${medicine.timing[0]}', 'taken')">
+                        ✓ Mark as Taken
+                    </button>
+                    <button class="adherence-btn skipped" onclick="logAdherence('${medicine.name}', '${medicine.timing[0]}', 'skipped')">
+                        ✗ Skipped
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        async function logAdherence(medicineName, scheduledTime, status) {
+            const formData = new FormData();
+            formData.append('medicine_name', medicineName);
+            formData.append('scheduled_time', scheduledTime);
+            formData.append('status', status);
+
+            try {
+                const response = await fetch(`${API_BASE}/ai/medication-adherence`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert(`✓ ${medicineName} marked as ${status}`);
+                } else {
+                    throw new Error('Failed to log adherence');
+                }
+            } catch (error) {
+                console.error('Error logging adherence:', error);
+                alert('Note: Adherence tracking requires authentication. This is a demo feature.');
+            }
+        }
+
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.textContent = message;
+            errorMsg.classList.add('active');
+        }
+
+        // Demo mode notice
+        console.log('%c🏥 NextGen Health - Prescription Schedule Demo', 'font-size: 16px; font-weight: bold; color: #667eea;');
+        console.log('%cNote: This is a demo interface. For full functionality, ensure the backend server is running on http://localhost:8000', 'color: #666;');
+    </script>
+</body>
+</html>
