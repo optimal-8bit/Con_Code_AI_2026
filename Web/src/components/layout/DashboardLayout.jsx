@@ -129,31 +129,33 @@ export default function DashboardLayout({ children }) {
               );
             })}
 
-            {/* AI Features Section */}
-            <div className="pt-4 mt-4 border-t border-gray-200">
-              <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                AI Features
-              </p>
-              {aiFeatures.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-purple-50 text-purple-600'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            {/* AI Features Section - Only for Patients */}
+            {user?.role === 'patient' && (
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  AI Features
+                </p>
+                {aiFeatures.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-purple-50 text-purple-600'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </nav>
 
           {/* User Section */}
@@ -195,7 +197,7 @@ export default function DashboardLayout({ children }) {
             <div className="flex-1 lg:flex lg:items-center lg:justify-between">
               <h1 className="text-2xl font-bold text-gray-900 ml-4 lg:ml-0">
                 {navItems.find((item) => item.path === location.pathname)?.label ||
-                  aiFeatures.find((item) => item.path === location.pathname)?.label ||
+                  (user?.role === 'patient' && aiFeatures.find((item) => item.path === location.pathname)?.label) ||
                   'Dashboard'}
               </h1>
             </div>

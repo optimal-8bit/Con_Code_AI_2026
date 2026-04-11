@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { patientService } from '@/services/patient.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
-import { Calendar, Plus, Search, Clock, MapPin, User, X } from 'lucide-react';
+import { Calendar, Plus, Search, Clock, MapPin, User, X, Timer } from 'lucide-react';
 
 export default function PatientAppointments() {
   const location = useLocation();
@@ -15,12 +15,80 @@ export default function PatientAppointments() {
   const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBooking, setShowBooking] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [formData, setFormData] = useState({
     doctor_id: '',
     scheduled_at: '',
     reason: '',
     notes: '',
   });
+
+  // Update current time every second for countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Helper function to get doctor name by ID
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find(d => d.id === doctorId);
+    return doctor ? doctor.name : `Doctor ID: ${doctorId}`;
+  };
+
+  // Helper function to get doctor details by ID
+  const getDoctorDetails = (doctorId) => {
+    return doctors.find(d => d.id === doctorId);
+  };
+
+  // Calculate countdown for upcoming appointments
+  const getCountdown = (scheduledAt) => {
+    const appointmentTime = new Date(scheduledAt);
+    const diff = appointmentTime - currentTime;
+
+    if (diff <= 0) {
+      return { text: 'Appointment time has passed', isPast: true, isUrgent: false };
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    const isUrgent = diff < 24 * 60 * 60 * 1000; // Less than 24 hours
+
+    if (days > 0) {
+      return { 
+        text: `${days}d ${hours}h ${minutes}m`, 
+        isPast: false, 
+        isUrgent: false,
+        fullText: `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`
+      };
+    } else if (hours > 0) {
+      return { 
+        text: `${hours}h ${minutes}m ${seconds}s`, 
+        isPast: false, 
+        isUrgent,
+        fullText: `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`
+      };
+    } else if (minutes > 0) {
+      return { 
+        text: `${minutes}m ${seconds}s`, 
+        isPast: false, 
+        isUrgent: true,
+        fullText: `${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`
+      };
+    } else {
+      return { 
+        text: `${seconds}s`, 
+        isPast: false, 
+        isUrgent: true,
+        fullText: `${seconds} second${seconds > 1 ? 's' : ''}`
+      };
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -229,49 +297,95 @@ export default function PatientAppointments() {
 
         <div className="grid gap-4">
           {appointments.length > 0 ? (
-            appointments.map((appt) => (
-              <Card key={appt.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-gray-500" />
-                        <span className="font-medium text-gray-900">
-                          {formatDateTime(appt.scheduled_at)}
-                        </span>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appt.status)}`}>
-                          {appt.status}
-                        </span>
+            appointments.map((appt) => {
+              const countdown = appt.status === 'pending' || appt.status === 'confirmed' 
+                ? getCountdown(appt.scheduled_at) 
+                : null;
+              const doctor = getDoctorDetails(appt.doctor_id);
+
+              return (
+                <Card key={appt.id} className={countdown?.isUrgent ? 'border-2 border-orange-400' : ''}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-5 w-5 text-gray-500" />
+                          <span className="font-medium text-gray-900">
+                            {formatDateTime(appt.scheduled_at)}
+                          </span>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appt.status)}`}>
+                            {appt.status}
+                          </span>
+                        </div>
+
+                        {/* Live Countdown */}
+                        {countdown && !countdown.isPast && (
+                          <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                            countdown.isUrgent 
+                              ? 'bg-orange-50 border border-orange-200' 
+                              : 'bg-blue-50 border border-blue-200'
+                          }`}>
+                            <Timer className={`h-5 w-5 ${countdown.isUrgent ? 'text-orange-600' : 'text-blue-600'}`} />
+                            <div>
+                              <p className={`text-sm font-semibold ${countdown.isUrgent ? 'text-orange-900' : 'text-blue-900'}`}>
+                                {countdown.isUrgent ? '⏰ Upcoming Soon!' : 'Time Until Appointment:'}
+                              </p>
+                              <p className={`text-lg font-bold ${countdown.isUrgent ? 'text-orange-700' : 'text-blue-700'} font-mono`}>
+                                {countdown.text}
+                              </p>
+                              <p className={`text-xs ${countdown.isUrgent ? 'text-orange-600' : 'text-blue-600'}`}>
+                                {countdown.fullText}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Doctor Information */}
+                        <div className="flex items-start gap-2 text-gray-700">
+                          <User className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold text-gray-900">{getDoctorName(appt.doctor_id)}</p>
+                            {doctor?.profile?.specialty && (
+                              <p className="text-sm text-blue-600">{doctor.profile.specialty}</p>
+                            )}
+                            {doctor?.profile?.qualifications && (
+                              <p className="text-sm text-gray-600">{doctor.profile.qualifications}</p>
+                            )}
+                            {doctor?.profile?.city && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <MapPin className="h-3 w-3 text-gray-500" />
+                                <span className="text-sm text-gray-600">{doctor.profile.city}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {appt.reason && (
+                          <p className="text-gray-700">
+                            <span className="font-medium">Reason:</span> {appt.reason}
+                          </p>
+                        )}
+                        {appt.notes && (
+                          <p className="text-gray-600 text-sm">
+                            <span className="font-medium">Notes:</span> {appt.notes}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <User className="h-4 w-4" />
-                        <span>Doctor ID: {appt.doctor_id}</span>
-                      </div>
-                      {appt.reason && (
-                        <p className="text-gray-700">
-                          <span className="font-medium">Reason:</span> {appt.reason}
-                        </p>
-                      )}
-                      {appt.notes && (
-                        <p className="text-gray-600 text-sm">
-                          <span className="font-medium">Notes:</span> {appt.notes}
-                        </p>
+                      {appt.status === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCancel(appt.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Cancel
+                        </Button>
                       )}
                     </div>
-                    {appt.status === 'pending' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCancel(appt.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="py-12 text-center">

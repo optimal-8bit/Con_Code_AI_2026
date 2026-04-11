@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,10 @@ import { Input } from '@/components/ui/input';
 import { aiService } from '@/services/ai.service';
 import { patientService } from '@/services/patient.service';
 import { deriveMedicationPlan, handleApiError } from '@/lib/utils';
-import { FileText, Upload, AlertCircle, CheckCircle, Pill, Calendar, ShoppingCart, Save } from 'lucide-react';
+import { FileText, Upload, AlertCircle, CheckCircle, Pill, Calendar, ShoppingCart, Save, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+const STORAGE_KEY = 'prescription_analyzer_state';
 
 export default function PrescriptionAnalyzer() {
   const navigate = useNavigate();
@@ -25,6 +28,50 @@ export default function PrescriptionAnalyzer() {
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaved, setScheduleSaved] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
+
+  // Load persisted state on mount
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.result) setResult(parsed.result);
+        if (parsed.formData) setFormData(parsed.formData);
+        if (parsed.scheduleResult) setScheduleResult(parsed.scheduleResult);
+        if (parsed.scheduleSaved) setScheduleSaved(parsed.scheduleSaved);
+      }
+    } catch (err) {
+      console.error('Error loading saved state:', err);
+    }
+  }, []);
+
+  // Persist state whenever result changes
+  useEffect(() => {
+    if (result) {
+      try {
+        const stateToSave = {
+          result,
+          formData,
+          scheduleResult,
+          scheduleSaved,
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+      } catch (err) {
+        console.error('Error saving state:', err);
+      }
+    }
+  }, [result, formData, scheduleResult, scheduleSaved]);
+
+  // Clear persisted state
+  const clearResults = () => {
+    setResult(null);
+    setScheduleResult(null);
+    setScheduleSaved(false);
+    setError('');
+    setScheduleError('');
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -140,12 +187,24 @@ export default function PrescriptionAnalyzer() {
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-purple-600" />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">AI Prescription Analyzer</h2>
-            <p className="text-gray-600">Upload or paste your prescription for detailed analysis</p>
+        <div className="flex items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <FileText className="h-8 w-8 text-purple-600" />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">AI Prescription Analyzer</h2>
+              <p className="text-gray-600">Upload or paste your prescription for detailed analysis</p>
+            </div>
           </div>
+          {result && (
+            <Button
+              onClick={clearResults}
+              variant="outline"
+              className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+            >
+              <X className="h-4 w-4" />
+              Clear Results
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -306,23 +365,37 @@ export default function PrescriptionAnalyzer() {
                               )}
                             </div>
                             {med.side_effects && med.side_effects.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-sm font-medium text-gray-700">Side Effects:</p>
-                                <ul className="text-sm text-gray-600 ml-4">
-                                  {med.side_effects.map((effect, i) => (
-                                    <li key={i}>• {effect}</li>
-                                  ))}
-                                </ul>
+                              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                <p className="text-sm font-semibold text-yellow-900 mb-2">Side Effects:</p>
+                                <div className="prose prose-sm max-w-none">
+                                  <ReactMarkdown
+                                    components={{
+                                      ul: ({node, ...props}) => <ul className="list-disc ml-4 space-y-1" {...props} />,
+                                      li: ({node, ...props}) => <li className="text-sm text-yellow-800" {...props} />,
+                                      p: ({node, ...props}) => <p className="text-sm text-yellow-800 mb-1" {...props} />,
+                                      strong: ({node, ...props}) => <strong className="font-semibold text-yellow-900" {...props} />,
+                                    }}
+                                  >
+                                    {med.side_effects.join('\n')}
+                                  </ReactMarkdown>
+                                </div>
                               </div>
                             )}
                             {med.interactions && med.interactions.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-sm font-medium text-orange-700">Interactions:</p>
-                                <ul className="text-sm text-orange-600 ml-4">
-                                  {med.interactions.map((interaction, i) => (
-                                    <li key={i}>• {interaction}</li>
-                                  ))}
-                                </ul>
+                              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded">
+                                <p className="text-sm font-semibold text-orange-900 mb-2">Interactions:</p>
+                                <div className="prose prose-sm max-w-none">
+                                  <ReactMarkdown
+                                    components={{
+                                      ul: ({node, ...props}) => <ul className="list-disc ml-4 space-y-1" {...props} />,
+                                      li: ({node, ...props}) => <li className="text-sm text-orange-800" {...props} />,
+                                      p: ({node, ...props}) => <p className="text-sm text-orange-800 mb-1" {...props} />,
+                                      strong: ({node, ...props}) => <strong className="font-semibold text-orange-900" {...props} />,
+                                    }}
+                                  >
+                                    {med.interactions.join('\n')}
+                                  </ReactMarkdown>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -334,46 +407,82 @@ export default function PrescriptionAnalyzer() {
               )}
 
               {result.summary_instructions && result.summary_instructions.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Summary Instructions:</h3>
-                  <ul className="space-y-1">
-                    {result.summary_instructions.map((instruction, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {instruction}</li>
-                    ))}
-                  </ul>
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="font-semibold text-blue-900 mb-3">Summary Instructions:</h3>
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        ul: ({node, ...props}) => <ul className="list-disc ml-5 space-y-2" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal ml-5 space-y-2" {...props} />,
+                        li: ({node, ...props}) => <li className="text-sm text-blue-800 leading-relaxed" {...props} />,
+                        p: ({node, ...props}) => <p className="text-sm text-blue-800 mb-2 leading-relaxed" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-semibold text-blue-900" {...props} />,
+                        em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
+                      }}
+                    >
+                      {result.summary_instructions.join('\n')}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
 
               {result.drug_interactions && result.drug_interactions.length > 0 && (
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <h3 className="font-medium text-orange-900 mb-2">⚠️ Drug Interactions:</h3>
-                  <ul className="space-y-1">
-                    {result.drug_interactions.map((interaction, idx) => (
-                      <li key={idx} className="text-sm text-orange-800">• {interaction}</li>
-                    ))}
-                  </ul>
+                <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-lg">
+                  <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    ⚠️ Drug Interactions:
+                  </h3>
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        ul: ({node, ...props}) => <ul className="list-disc ml-5 space-y-2" {...props} />,
+                        li: ({node, ...props}) => <li className="text-sm text-orange-800 leading-relaxed" {...props} />,
+                        p: ({node, ...props}) => <p className="text-sm text-orange-800 mb-2 leading-relaxed" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-semibold text-orange-900" {...props} />,
+                        em: ({node, ...props}) => <em className="italic text-orange-700" {...props} />,
+                      }}
+                    >
+                      {result.drug_interactions.join('\n')}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
 
               {result.dietary_restrictions && result.dietary_restrictions.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Dietary Restrictions:</h3>
-                  <ul className="space-y-1">
-                    {result.dietary_restrictions.map((restriction, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {restriction}</li>
-                    ))}
-                  </ul>
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="font-semibold text-green-900 mb-3">Dietary Restrictions:</h3>
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        ul: ({node, ...props}) => <ul className="list-disc ml-5 space-y-2" {...props} />,
+                        li: ({node, ...props}) => <li className="text-sm text-green-800 leading-relaxed" {...props} />,
+                        p: ({node, ...props}) => <p className="text-sm text-green-800 mb-2 leading-relaxed" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-semibold text-green-900" {...props} />,
+                        em: ({node, ...props}) => <em className="italic text-green-700" {...props} />,
+                      }}
+                    >
+                      {result.dietary_restrictions.join('\n')}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
 
               {result.storage_instructions && result.storage_instructions.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Storage Instructions:</h3>
-                  <ul className="space-y-1">
-                    {result.storage_instructions.map((instruction, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {instruction}</li>
-                    ))}
-                  </ul>
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 mb-3">Storage Instructions:</h3>
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        ul: ({node, ...props}) => <ul className="list-disc ml-5 space-y-2" {...props} />,
+                        li: ({node, ...props}) => <li className="text-sm text-gray-700 leading-relaxed" {...props} />,
+                        p: ({node, ...props}) => <p className="text-sm text-gray-700 mb-2 leading-relaxed" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-semibold text-gray-900" {...props} />,
+                        em: ({node, ...props}) => <em className="italic text-gray-600" {...props} />,
+                      }}
+                    >
+                      {result.storage_instructions.join('\n')}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
             </CardContent>
