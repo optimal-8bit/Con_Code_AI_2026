@@ -4,27 +4,25 @@ import Aurora from '@/components/ui/Aurora';
 import { Bot, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function PatientLayout({ children }) {
   const { logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const [showSecondNav, setShowSecondNav] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const ticking = useRef(false);
 
   useEffect(() => {
-    let lastScrollY = window.scrollY;
-
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      if (currentScrollY > 50) {
-        setShowSecondNav(false);
-      } else {
-        setShowSecondNav(true);
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const scrollY = window.scrollY;
+          setIsScrolled(scrollY > 100);
+          ticking.current = false;
+        });
+        ticking.current = true;
       }
-      
-      lastScrollY = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -56,7 +54,7 @@ export default function PatientLayout({ children }) {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden text-white pt-48 pb-12 px-4 sm:px-6 lg:px-8" data-patient-theme="true">
+    <div className="min-h-screen relative overflow-hidden text-white pt-40 pb-12 px-4 sm:px-6 lg:px-8" data-patient-theme="true">
       {/* Background Component: Aurora with blue/purple theme for patients */}
       <Aurora 
         colorStops={["#3b82f6", "#8b5cf6", "#06b6d4"]} 
@@ -66,15 +64,15 @@ export default function PatientLayout({ children }) {
       />
       
       {/* Navbar Container - Two Rows with PillNav */}
-      <div className="fixed top-0 left-0 w-full z-50 p-4 shrink-0 pointer-events-none">
+      <div className="fixed top-0 left-0 w-full z-50 p-4">
         <div className="max-w-7xl mx-auto space-y-3">
           {/* First Row - Main Navigation */}
-          <div className="flex justify-between items-center pointer-events-auto bg-black/30 backdrop-blur-xl rounded-full px-6 py-2 border border-white/20 shadow-lg">
-            <div className="flex items-center space-x-2 text-white">
+          <div className="flex justify-between items-center bg-black/30 backdrop-blur-xl rounded-full px-6 py-3 border border-white/20 shadow-lg">
+            <div className="flex items-center space-x-2 text-white flex-shrink-0 mr-4">
               <Bot className="h-8 w-8 text-blue-400" />
             </div>
             
-            <div className="flex-1 flex justify-center">
+            <div className="flex-1 flex justify-center min-w-0">
               <PillNav
                 items={mainNavItems}
                 activeHref={location.pathname}
@@ -82,13 +80,12 @@ export default function PatientLayout({ children }) {
                 pillColor="rgba(255,255,255,0.1)"
                 hoveredPillTextColor="#000"
                 pillTextColor="#fff"
-                className="!static !mt-0 !mb-0"
               />
             </div>
 
             <Button 
               variant="ghost" 
-              className="text-white hover:bg-white/20 whitespace-nowrap rounded-full" 
+              className="text-white hover:bg-white/20 whitespace-nowrap rounded-full flex-shrink-0 ml-4" 
               onClick={handleLogout}
             >
               <LogOut className="h-5 w-5 sm:mr-2" />
@@ -96,23 +93,35 @@ export default function PatientLayout({ children }) {
             </Button>
           </div>
 
-          {/* Second Row - AI Features with PillNav (hides on scroll) */}
+          {/* Second Row - AI Features with PillNav - Hides on scroll */}
           <div 
-            className={`flex justify-center pointer-events-auto transition-all duration-300 ${
-              showSecondNav ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+            className={`flex justify-center items-center transition-all duration-300 ease-out ${
+              isScrolled 
+                ? 'opacity-0 -translate-y-full pointer-events-none' 
+                : 'opacity-100 translate-y-0'
             }`}
+            style={{
+              maxHeight: isScrolled ? '0' : '100px',
+              overflow: 'hidden'
+            }}
           >
-            <div className="bg-black/30 backdrop-blur-xl rounded-full px-6 py-2 border border-purple-500/30 shadow-lg flex items-center gap-3">
-              <span className="text-purple-300 text-sm font-semibold">🤖 AI:</span>
-              <PillNav
-                items={aiNavItems}
-                activeHref={location.pathname}
-                baseColor="#a855f7"
-                pillColor="rgba(255,255,255,0.1)"
-                hoveredPillTextColor="#000"
-                pillTextColor="#fff"
-                className="!static !mt-0 !mb-0"
-              />
+            <div className="bg-black/30 backdrop-blur-xl rounded-full px-6 py-3 border border-purple-500/30 shadow-lg">
+              <div className="flex items-center gap-4">
+                <span className="text-purple-300 text-sm font-semibold whitespace-nowrap flex items-center gap-2">
+                  <span>🤖</span>
+                  <span className="hidden sm:inline">AI Features:</span>
+                </span>
+                <div className="flex-shrink-0">
+                  <PillNav
+                    items={aiNavItems}
+                    activeHref={location.pathname}
+                    baseColor="#a855f7"
+                    pillColor="rgba(255,255,255,0.1)"
+                    hoveredPillTextColor="#000"
+                    pillTextColor="#fff"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

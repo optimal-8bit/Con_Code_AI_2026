@@ -153,13 +153,20 @@ export default function SymptomChecker() {
   };
 
   const handleBookWithDoctor = (doctor) => {
-    const reason = `Follow-up for symptoms: ${formData.symptom_text.substring(0, 100)}${formData.symptom_text.length > 100 ? '...' : ''}`;
-    
+    // Pass the complete symptom analysis result for summarization
     navigate('/patient/appointments', {
       state: {
         openBooking: true,
         selectedDoctorId: doctor.id,
-        reason: reason
+        symptomAnalysis: {
+          symptom_text: formData.symptom_text,
+          possible_conditions: result.possible_conditions || [],
+          severity: result.severity || '',
+          red_flags: result.red_flags || [],
+          next_steps: result.next_steps || [],
+          recommended_specialist: result.recommended_specialist || '',
+          home_care_tips: result.home_care_tips || []
+        }
       }
     });
   };

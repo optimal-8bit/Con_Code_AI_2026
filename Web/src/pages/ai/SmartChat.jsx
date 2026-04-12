@@ -184,8 +184,8 @@ export default function SmartChat() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto h-[calc(100vh-12rem)] flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="max-w-5xl mx-auto h-[calc(100vh-12rem)] flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 mb-6 flex-shrink-0">
           <MessageSquare className="h-8 w-8 text-blue-600" />
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Smart Health Chat</h2>
@@ -193,10 +193,10 @@ export default function SmartChat() {
           </div>
         </div>
 
-        <Card className="flex-1 flex flex-col">
-          <CardContent className="flex-1 flex flex-col p-0">
+        <Card className="flex-1 flex flex-col min-h-0">
+          <CardContent className="flex-1 flex flex-col p-0 min-h-0">
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
               {messages.length === 0 && (
                 <div className="text-center py-8">
                   <Bot className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -383,7 +383,7 @@ export default function SmartChat() {
 
                   {/* Upload Options Dropdown */}
                   {showUploadMenu && (
-                    <div className="absolute bottom-full left-0 mb-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                    <div className="absolute bottom-full left-0 mb-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
                       <button
                         type="button"
                         onClick={() => handleUploadClick('symptom')}

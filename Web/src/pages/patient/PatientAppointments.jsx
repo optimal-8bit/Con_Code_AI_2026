@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { patientService } from '@/services/patient.service';
+import { symptomSummaryService } from '@/services/symptom-summary.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
-import { Calendar, Plus, Search, Clock, MapPin, User, X, Timer } from 'lucide-react';
+import { Calendar, Plus, Search, Clock, MapPin, User, X, Timer, Loader2 } from 'lucide-react';
 
 export default function PatientAppointments() {
   const location = useLocation();
@@ -16,6 +17,7 @@ export default function PatientAppointments() {
   const [loading, setLoading] = useState(true);
   const [showBooking, setShowBooking] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [formData, setFormData] = useState({
     doctor_id: '',
     scheduled_at: '',
@@ -99,15 +101,45 @@ export default function PatientAppointments() {
       
       // Pre-fill form data from navigation state
       const newFormData = { ...formData };
-      if (location.state.reason) {
-        newFormData.reason = location.state.reason;
-      }
+      
       if (location.state.selectedDoctorId) {
         newFormData.doctor_id = location.state.selectedDoctorId;
       }
+      
+      // If symptom analysis data is provided, generate summary for notes
+      if (location.state.symptomAnalysis) {
+        generateSymptomSummary(location.state.symptomAnalysis);
+        // Set a default reason
+        newFormData.reason = 'Follow-up for symptom analysis';
+      } else if (location.state.reason) {
+        // Use provided reason if no symptom analysis
+        newFormData.reason = location.state.reason;
+      }
+      
       setFormData(newFormData);
     }
   }, [location.state]);
+
+  const generateSymptomSummary = async (symptomData) => {
+    setGeneratingSummary(true);
+    try {
+      const response = await symptomSummaryService.generateSummary(symptomData);
+      setFormData(prev => ({
+        ...prev,
+        notes: response.summary
+      }));
+    } catch (err) {
+      console.error('Error generating summary:', handleApiError(err));
+      // Fallback to basic summary
+      const fallbackNotes = `Patient reports: ${symptomData.symptom_text.substring(0, 150)}${symptomData.symptom_text.length > 150 ? '...' : ''}`;
+      setFormData(prev => ({
+        ...prev,
+        notes: fallbackNotes
+      }));
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
 
   useEffect(() => {
     // Filter doctors by specialty if specified, but only if no specific doctor is selected
@@ -275,14 +307,33 @@ export default function PatientAppointments() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Notes (Optional)</label>
+                  <label className="text-sm font-medium text-gray-700 flex items-center justify-between">
+                    <span>Notes {location.state?.symptomAnalysis ? '(Auto-generated from symptom analysis)' : '(Optional)'}</span>
+                    {generatingSummary && (
+                      <span className="text-xs text-blue-600 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Generating summary...
+                      </span>
+                    )}
+                  </label>
+                  {location.state?.symptomAnalysis && (
+                    <p className="text-xs text-blue-600 mb-2">
+                      AI-generated summary of your symptom analysis for the doctor
+                    </p>
+                  )}
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
                     rows="3"
-                    placeholder="Any additional information"
+                    placeholder={location.state?.symptomAnalysis ? "Generating summary from symptom analysis..." : "Any additional information"}
+                    disabled={generatingSummary}
                   />
+                  {location.state?.symptomAnalysis && !generatingSummary && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      You can edit this summary before booking the appointment
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit">Book Appointment</Button>

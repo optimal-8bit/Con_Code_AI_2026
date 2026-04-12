@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'motion/react';
+import DoctorLayout from '@/components/layout/DoctorLayout';
+import BorderGlow from '@/components/ui/BorderGlow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { doctorService } from '@/services/doctor.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
-import { AlertCircle, FileText, Pill, Upload } from 'lucide-react';
+import { AlertCircle, FileText, Pill, Upload, X } from 'lucide-react';
 
 const getFileExtension = (fileUrl = '') => {
   try {
@@ -144,36 +145,55 @@ export default function DoctorPrescriptions() {
   if (loading) {
     return (
       <DoctorLayout>
-        <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center min-h-[50vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
         </div>
       </DoctorLayout>
     );
   }
 
-  return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Issued Prescriptions</h2>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Issue New Prescription</CardTitle>
-          </CardHeader>
-          <CardContent>
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
+  return (
+    <DoctorLayout>
+      <motion.div 
+        className="space-y-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={itemVariants}>
+          <h2 className="text-3xl font-bold text-white">Issued Prescriptions</h2>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <BorderGlow glowColor="210 80 80">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-white mb-6">Issue New Prescription</h3>
             <form onSubmit={handleIssuePrescription} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Appointment / Patient</label>
+                  <label className="text-sm font-medium text-gray-300">Appointment / Patient</label>
                   <select
                     value={form.appointment_id}
                     onChange={(event) => setForm((previous) => ({ ...previous, appointment_id: event.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                     required
                   >
-                    <option value="">Select appointment</option>
+                    <option value="" className="bg-gray-900">Select appointment</option>
                     {appointmentOptions.map((appointment) => (
-                      <option key={appointment.id} value={appointment.id}>
+                      <option key={appointment.id} value={appointment.id} className="bg-gray-900">
                         {(appointment.patient_name || appointment.patient_email || appointment.patient_id)} - {formatDateTime(appointment.scheduled_at)}
                       </option>
                     ))}
@@ -181,7 +201,7 @@ export default function DoctorPrescriptions() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Valid Days</label>
+                  <label className="text-sm font-medium text-gray-300">Valid Days</label>
                   <Input
                     type="number"
                     min="1"
@@ -190,185 +210,194 @@ export default function DoctorPrescriptions() {
                     onChange={(event) =>
                       setForm((previous) => ({ ...previous, valid_days: Number(event.target.value || 30) }))
                     }
+                    className="bg-white/10 border-white/20 text-white"
                   />
                 </div>
               </div>
 
               {selectedAppointment && (
-                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
+                <div className="p-3 rounded-lg bg-blue-500/20 border border-blue-400/30 text-sm text-blue-200">
                   Issuing to: {selectedAppointment.patient_name || selectedAppointment.patient_email || selectedAppointment.patient_id}
                 </div>
               )}
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Prescription Doc/Image (stored in Cloudinary)</label>
+                <label className="text-sm font-medium text-gray-300">Prescription Doc/Image (stored in Cloudinary)</label>
                 <Input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={(event) =>
                     setForm((previous) => ({ ...previous, prescription_file: event.target.files?.[0] || null }))
                   }
+                  className="bg-white/10 border-white/20 text-white file:bg-blue-500/20 file:text-white file:border-0"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Notes</label>
+                <label className="text-sm font-medium text-gray-300">Notes</label>
                 <textarea
                   value={form.notes}
                   onChange={(event) => setForm((previous) => ({ ...previous, notes: event.target.value }))}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                   rows="3"
                   placeholder="Additional notes for patient"
                 />
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                <div className="flex items-center gap-2 p-3 bg-red-500/20 border border-red-400/30 rounded-lg text-red-200 text-sm">
                   <AlertCircle className="h-4 w-4" />
                   <span>{error}</span>
                 </div>
               )}
 
               {success && (
-                <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+                <div className="p-3 rounded-lg bg-green-500/20 border border-green-400/30 text-sm text-green-200">
                   {success}
                 </div>
               )}
 
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" disabled={submitting} className="bg-blue-500 hover:bg-blue-600 text-white">
                 <Upload className="h-4 w-4 mr-2" />
                 {submitting ? 'Issuing...' : 'Issue Prescription'}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </BorderGlow>
+      </motion.div>
 
         <div className="grid gap-4">
           {prescriptions.length > 0 ? (
-            prescriptions.map((prescription) => (
-              <Card key={prescription.id}>
-                <CardContent className="pt-6">
-                  <div className={`flex gap-6 ${prescription.prescription_file_url ? 'flex-col lg:flex-row' : 'flex-col'}`}>
-                    {prescription.prescription_file_url && (
-                      <div className="w-full lg:w-[360px] lg:shrink-0 space-y-3">
-                        {isImageFile(prescription.prescription_file_url) && (
-                          <button
-                            type="button"
-                            onClick={() => openFilePreview(prescription.prescription_file_url)}
-                            className="block w-full"
-                          >
-                            <img
-                              src={prescription.prescription_file_url}
-                              alt="Prescription thumbnail"
-                              className="h-52 w-full rounded-lg border border-gray-200 object-cover cursor-zoom-in"
-                              loading="lazy"
-                            />
-                          </button>
-                        )}
-
-                        {isPdfFile(prescription.prescription_file_url) && (
-                          <button
-                            type="button"
-                            onClick={() => openFilePreview(prescription.prescription_file_url)}
-                            className="block w-full"
-                          >
-                            <object
-                              data={`${prescription.prescription_file_url}#page=1&view=FitH`}
-                              type="application/pdf"
-                              className="h-52 w-full rounded-lg border border-gray-200 bg-white pointer-events-none cursor-zoom-in"
+            prescriptions.map((prescription, index) => (
+              <motion.div key={prescription.id} variants={itemVariants}>
+                <BorderGlow glowColor={`${200 + (index * 20)} 60 40`}>
+                  <div className="p-6">
+                    <div className={`flex gap-6 ${prescription.prescription_file_url ? 'flex-col lg:flex-row' : 'flex-col'}`}>
+                      {prescription.prescription_file_url && (
+                        <div className="w-full lg:w-[360px] lg:shrink-0 space-y-3">
+                          {isImageFile(prescription.prescription_file_url) && (
+                            <button
+                              type="button"
+                              onClick={() => openFilePreview(prescription.prescription_file_url)}
+                              className="block w-full"
                             >
-                              <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                                PDF preview unavailable
-                              </div>
-                            </object>
-                          </button>
-                        )}
-
-                        {!isImageFile(prescription.prescription_file_url) && !isPdfFile(prescription.prescription_file_url) && (
-                          <button
-                            type="button"
-                            onClick={() => openFilePreview(prescription.prescription_file_url)}
-                            className="flex h-52 w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-600"
-                          >
-                            File preview unavailable
-                          </button>
-                        )}
-
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={prescription.prescription_file_url} target="_blank" rel="noopener noreferrer">
-                            View Uploaded Prescription File
-                          </a>
-                        </Button>
-                      </div>
-                    )}
-
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">Issued: {formatDateTime(prescription.issued_at)}</p>
-                          <p className="text-sm text-gray-600">Patient: {prescription.patient_name || prescription.patient_id}</p>
-                          {prescription.appointment_id && (
-                            <p className="text-sm text-gray-600">Appointment: {prescription.appointment_id}</p>
+                              <img
+                                src={prescription.prescription_file_url}
+                                alt="Prescription thumbnail"
+                                className="h-52 w-full rounded-lg border border-white/20 object-cover cursor-zoom-in hover:border-blue-400/50 transition"
+                                loading="lazy"
+                              />
+                            </button>
                           )}
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(prescription.status)}`}>
-                          {prescription.status}
-                        </span>
-                      </div>
 
-                      {prescription.medicines?.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="font-medium text-gray-900">Medicines</p>
-                          {prescription.medicines.map((medicine, index) => (
-                            <div key={index} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                              <Pill className="h-5 w-5 text-purple-600 mt-0.5" />
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">{medicine.name}</p>
-                                <p className="text-sm text-gray-600">
-                                  {medicine.dosage} - {medicine.frequency} for {medicine.duration}
-                                </p>
-                                {medicine.instructions && (
-                                  <p className="text-sm text-gray-500 mt-1">{medicine.instructions}</p>
-                                )}
+                          {isPdfFile(prescription.prescription_file_url) && (
+                            <button
+                              type="button"
+                              onClick={() => openFilePreview(prescription.prescription_file_url)}
+                              className="block w-full"
+                            >
+                              <object
+                                data={`${prescription.prescription_file_url}#page=1&view=FitH`}
+                                type="application/pdf"
+                                className="h-52 w-full rounded-lg border border-white/20 bg-white/5 pointer-events-none cursor-zoom-in hover:border-blue-400/50 transition"
+                              >
+                                <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                                  PDF preview unavailable
+                                </div>
+                              </object>
+                            </button>
+                          )}
+
+                          {!isImageFile(prescription.prescription_file_url) && !isPdfFile(prescription.prescription_file_url) && (
+                            <button
+                              type="button"
+                              onClick={() => openFilePreview(prescription.prescription_file_url)}
+                              className="flex h-52 w-full items-center justify-center rounded-lg border border-white/20 bg-white/5 text-sm text-gray-400 hover:border-blue-400/50 transition"
+                            >
+                              File preview unavailable
+                            </button>
+                          )}
+
+                          <Button variant="outline" size="sm" asChild className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10">
+                            <a href={prescription.prescription_file_url} target="_blank" rel="noopener noreferrer">
+                              View Uploaded Prescription File
+                            </a>
+                          </Button>
+                        </div>
+                      )}
+
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-300">Issued: {formatDateTime(prescription.issued_at)}</p>
+                            <p className="text-sm text-gray-300">Patient: {prescription.patient_name || prescription.patient_id}</p>
+                            {prescription.appointment_id && (
+                              <p className="text-sm text-gray-300">Appointment: {prescription.appointment_id}</p>
+                            )}
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(prescription.status)}`}>
+                            {prescription.status}
+                          </span>
+                        </div>
+
+                        {prescription.medicines?.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="font-medium text-white">Medicines</p>
+                            {prescription.medicines.map((medicine, medIndex) => (
+                              <div key={medIndex} className="flex items-start gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
+                                <Pill className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="font-medium text-white">{medicine.name}</p>
+                                  <p className="text-sm text-gray-300">
+                                    {medicine.dosage} - {medicine.frequency} for {medicine.duration}
+                                  </p>
+                                  {medicine.instructions && (
+                                    <p className="text-sm text-gray-400 mt-1">{medicine.instructions}</p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        )}
 
-                      {prescription.notes && (
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm text-gray-700">{prescription.notes}</p>
-                        </div>
-                      )}
+                        {prescription.notes && (
+                          <div className="p-3 bg-blue-500/20 border border-blue-400/30 rounded-lg">
+                            <p className="text-sm text-gray-200">{prescription.notes}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </BorderGlow>
+              </motion.div>
             ))
           ) : (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg">No prescriptions issued yet</p>
-              </CardContent>
-            </Card>
+            <motion.div variants={itemVariants}>
+              <BorderGlow glowColor="200 60 40">
+                <div className="py-16 text-center">
+                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-300 text-lg">No prescriptions issued yet</p>
+                </div>
+              </BorderGlow>
+            </motion.div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {previewFileUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
           onClick={closeFilePreview}
         >
           <div
-            className="relative w-full max-w-5xl rounded-xl bg-white p-3 shadow-2xl"
+            className="relative w-full max-w-5xl rounded-xl bg-gray-900 border border-white/20 p-4 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-3 flex items-center justify-end">
-              <Button variant="outline" size="sm" onClick={closeFilePreview}>
-                Close Preview
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Prescription Preview</h3>
+              <Button variant="outline" size="sm" onClick={closeFilePreview} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                <X className="h-4 w-4 mr-1" />
+                Close
               </Button>
             </div>
 
@@ -376,9 +405,9 @@ export default function DoctorPrescriptions() {
               <object
                 data={`${previewFileUrl}#page=1&view=FitH`}
                 type="application/pdf"
-                className="h-[80vh] w-full rounded-lg border border-gray-200"
+                className="h-[80vh] w-full rounded-lg border border-white/20 bg-white"
               >
-                <div className="flex h-64 items-center justify-center text-sm text-gray-500">
+                <div className="flex h-64 items-center justify-center text-sm text-gray-400">
                   PDF preview unavailable in modal.
                 </div>
               </object>
@@ -386,12 +415,12 @@ export default function DoctorPrescriptions() {
               <img
                 src={previewFileUrl}
                 alt="Prescription preview"
-                className="max-h-[80vh] w-full rounded-lg object-contain"
+                className="max-h-[80vh] w-full rounded-lg object-contain border border-white/20"
               />
             )}
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </DoctorLayout>
   );
 }
