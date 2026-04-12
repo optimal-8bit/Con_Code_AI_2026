@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 
 // Intro Page
@@ -7,6 +8,7 @@ import IntroPage from '@/pages/intro_page';
 // Auth Pages
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
+import GoogleCallbackPage from '@/pages/auth/GoogleCallbackPage';
 
 // Patient Pages
 import PatientDashboard from '@/pages/patient/PatientDashboard';
@@ -75,6 +77,13 @@ function DashboardRedirect() {
 }
 
 export default function App() {
+  const initializeAuth = useAuthStore((state) => state.initializeAuth);
+
+  // Initialize auth state from localStorage on app mount
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   return (
     <Router>
       <Routes>
@@ -82,6 +91,7 @@ export default function App() {
         <Route path="/" element={<IntroPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/callback" element={<GoogleCallbackPage />} />
 
         {/* Dashboard Redirect */}
         <Route path="/dashboard" element={<DashboardRedirect />} />

@@ -46,6 +46,11 @@ export const authService = {
     return response.data;
   },
 
+  async initiateGoogleLogin() {
+    const response = await apiClient.get('/auth/google/login');
+    return response.data.auth_url;
+  },
+
   getCurrentUser() {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;

@@ -823,7 +823,7 @@ export default function IntroPage() {
         >
           {/* Company name */}
           <SplitText
-            text="Company Name"
+            text="MEDIXA"
             tag="h2"
             className="brand-name"
             splitType="chars"
@@ -839,7 +839,7 @@ export default function IntroPage() {
 
           {/* Tagline */}
           <SplitText
-            text="Design systems that move at the speed of thought."
+            text="Smart Care, Simplified."
             tag="p"
             className="tagline-text"
             splitType="lines"

@@ -49,6 +49,12 @@ class Settings:
     cloudinary_api_key: str | None = os.getenv("CLOUDINARY_API_KEY")
     cloudinary_api_secret: str | None = os.getenv("CLOUDINARY_API_SECRET")
 
+    # Google OAuth
+    google_client_id: str | None = os.getenv("GOOGLE_CLIENT_ID")
+    google_client_secret: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/google/callback")
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

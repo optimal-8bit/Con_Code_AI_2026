@@ -18,7 +18,7 @@ class UserService:
     def __init__(self) -> None:
         self.col = mongo_service.collection("users")
 
-    def create_user(self, payload: dict) -> dict | None:
+    def create_user(self, payload: dict, skip_password_hash: bool = False) -> dict | None:
         existing = self.col.find_one({"email": payload["email"]})
         if existing:
             return None  # Duplicate email
@@ -26,7 +26,7 @@ class UserService:
         doc = {
             "name": payload["name"],
             "email": payload["email"],
-            "password_hash": hash_password(payload["password"]),
+            "password_hash": "" if skip_password_hash else hash_password(payload["password"]),
             "role": payload.get("role", "patient"),
             "phone": payload.get("phone"),
             "profile": payload.get("profile", {}),
@@ -37,9 +37,18 @@ class UserService:
         result = self.col.insert_one(doc)
         return serialize_doc(self.col.find_one({"_id": result.inserted_id}))
 
+    def get_by_email(self, email: str) -> dict | None:
+        user = self.col.find_one({"email": email, "active": True})
+        return serialize_doc(user) if user else None
+
     def authenticate(self, email: str, password: str) -> dict | None:
         user = self.col.find_one({"email": email, "active": True})
-        if not user or not verify_password(password, user["password_hash"]):
+        if not user:
+            return None
+        # Check if OAuth user (no password)
+        if not user.get("password_hash"):
+            return None  # OAuth users cannot login with password
+        if not verify_password(password, user["password_hash"]):
             return None
         return serialize_doc(user)
 
