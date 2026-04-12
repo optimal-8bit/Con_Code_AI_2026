@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PatientLayout from '@/components/layout/PatientLayout';
 import BorderGlow from '@/components/ui/BorderGlow';
 import { Button } from '@/components/ui/button';
+import Shuffle from '@/components/ui/Shuffle';
 import { patientService } from '@/services/patient.service';
 import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
 import {
@@ -39,8 +40,28 @@ export default function PatientDashboard() {
   if (loading) {
     return (
       <PatientLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Shuffle
+            text="LOADING"
+            shuffleDirection="right"
+            duration={0.35}
+            animationMode="evenodd"
+            shuffleTimes={1}
+            ease="power3.out"
+            stagger={0.03}
+            threshold={0.1}
+            triggerOnce={false}
+            triggerOnHover={false}
+            respectReducedMotion={true}
+            loop={true}
+            loopDelay={0.5}
+            style={{ 
+              color: '#60a5fa',
+              fontSize: '3rem',
+              fontWeight: '700',
+              letterSpacing: '0.1em'
+            }}
+          />
         </div>
       </PatientLayout>
     );
