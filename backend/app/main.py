@@ -29,6 +29,8 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title=settings.api_title,
     version=settings.api_version,
@@ -37,12 +39,17 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# Log CORS configuration for debugging
+logger.info(f"CORS Origins configured: {settings.cors_origin_list}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Mount all routers
@@ -85,6 +92,11 @@ def health() -> dict:
         "version": settings.api_version,
     }
 
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """Handle preflight OPTIONS requests for all routes"""
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
