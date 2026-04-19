@@ -198,8 +198,7 @@ export default function PrescriptionAnalyzer() {
           {result && (
             <Button
               onClick={clearResults}
-              variant="outline"
-              className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium"
             >
               <X className="h-4 w-4" />
               Clear Results
@@ -260,7 +259,7 @@ export default function PrescriptionAnalyzer() {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full">
+              <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:bg-gray-400 disabled:text-gray-200">
                 {loading ? 'Analyzing...' : 'Analyze Prescription'}
               </Button>
             </form>
@@ -277,33 +276,31 @@ export default function PrescriptionAnalyzer() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                <Button onClick={addAllToMedications} className="flex-1 min-w-[200px]">
+              <div className="flex flex-wrap gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 shadow-sm">
+                <Button onClick={addAllToMedications} className="flex-1 min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white font-medium">
                   <Pill className="h-4 w-4 mr-2" />
                   Add to My Medications
                 </Button>
-                <Button onClick={createSchedule} disabled={scheduleLoading} variant="outline" className="flex-1 min-w-[200px]">
+                <Button onClick={createSchedule} disabled={scheduleLoading} className="flex-1 min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:bg-gray-400 disabled:text-gray-200">
                   <Calendar className="h-4 w-4 mr-2" />
                   {scheduleLoading ? 'Creating...' : 'Create Schedule'}
                 </Button>
                 <Button
                   onClick={saveSchedule}
                   disabled={!scheduleResult?.record_id || savingSchedule || scheduleSaved}
-                  variant="outline"
-                  className="flex-1 min-w-[200px]"
+                  className="flex-1 min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:bg-gray-400 disabled:text-gray-200"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {savingSchedule ? 'Saving...' : scheduleSaved ? 'Saved to Medical Records' : 'Save Schedule'}
                 </Button>
                 <Button
                   onClick={() => navigate('/patient/medication-schedule')}
-                  variant="outline"
-                  className="flex-1 min-w-[200px]"
+                  className="flex-1 min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 >
                   <Calendar className="h-4 w-4 mr-2" />
                   Open Schedule Tracker
                 </Button>
-                <Button onClick={orderFromPharmacy} variant="outline" className="flex-1 min-w-[200px]">
+                <Button onClick={orderFromPharmacy} className="flex-1 min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white font-medium">
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Order from Pharmacy
                 </Button>
@@ -327,7 +324,7 @@ export default function PrescriptionAnalyzer() {
                   </p>
                   {scheduleSaved && (
                     <div className="mt-3">
-                      <Button size="sm" onClick={() => navigate('/patient/records')}>
+                      <Button size="sm" onClick={() => navigate('/patient/records')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
                         View in Medical Records
                       </Button>
                     </div>
